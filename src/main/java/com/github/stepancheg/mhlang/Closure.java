@@ -319,7 +319,7 @@ public class Closure<R> extends Expr<R> {
   }
 
   private static <A, R> VarUpdate<R> varUpdate(Class<A> arg, Function<Var<A>, Closure<R>> f) {
-    Var.Param<A> param = new Var.Param<>(FunctionId.nextId(), 0, 0, arg);
+    Var.Param<A> param = new Var.Param<>(FunctionId.nextId(), 0, arg);
     Closure<R> closure = f.apply(param);
     closure = closure.moveParamTo0(param);
     return new VarUpdate<>(ImmutableList.of(param), closure);
@@ -328,8 +328,8 @@ public class Closure<R> extends Expr<R> {
   private static <A, B, R> VarUpdate<R> varUpdate(
       Class<A> a0, Class<B> a1, BiFunction<Var<A>, Var<B>, Closure<R>> f) {
     long functionId = FunctionId.nextId();
-    Var.Param<A> p0 = new Var.Param<>(functionId, 0, 0, a0);
-    Var.Param<B> p1 = new Var.Param<>(functionId, 1, 0, a1);
+    Var.Param<A> p0 = new Var.Param<>(functionId, 0, a0);
+    Var.Param<B> p1 = new Var.Param<>(functionId, 1, a1);
     Closure<R> closure = f.apply(p0, p1);
     closure = closure.moveParamTo0(p0, p1);
     return new VarUpdate<>(ImmutableList.of(p0, p1), closure);

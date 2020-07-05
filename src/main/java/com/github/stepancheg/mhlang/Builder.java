@@ -6,7 +6,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
-import java.util.stream.Stream;
 
 public class Builder {
 
@@ -38,10 +37,6 @@ public class Builder {
     return params.size() + assignments.size();
   }
 
-  private int nextNonVoidIndex() {
-    return params.size() + nonVoidAssignments.size();
-  }
-
   private boolean bodyStarted() {
     return !assignments.isEmpty();
   }
@@ -50,7 +45,7 @@ public class Builder {
     Preconditions.checkState(type != void.class, "Parameter type must not be void");
     Preconditions.checkState(
         !bodyStarted(), "Cannot add function parameter after function body started");
-    Var.Param<T> param = new Var.Param<>(functionId, nextVarId(), nextNonVoidIndex(), type);
+    Var.Param<T> param = new Var.Param<>(functionId, nextVarId(), type);
     params.add(param);
     return param;
   }
@@ -64,7 +59,7 @@ public class Builder {
   }
 
   public <R> Var<R> assign(Closure<R> closure) {
-    Var.Invoke<R> var = new Var.Invoke<>(functionId, nextVarId(), nextNonVoidIndex(), closure);
+    Var.Invoke<R> var = new Var.Invoke<>(functionId, nextVarId(), closure);
     assignments.add(var);
     if (var.type() != void.class) {
       nonVoidAssignments.add(var);
@@ -119,7 +114,7 @@ public class Builder {
   public MethodHandle buildReturn(Var<?> returnValue) {
     MethodHandle mh;
     if (returnValue.type() != void.class) {
-      mh = MhUtil.returnParam(currentParams(), returnValue.nonVoidVarIndex);
+      mh = MhUtil.returnParam(currentParams(), varIndex(returnValue));
     } else {
       mh = MhUtil.returnVoid(currentParams());
     }
