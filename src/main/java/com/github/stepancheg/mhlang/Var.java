@@ -29,37 +29,20 @@ public abstract class Var<T> {
         public Class<T> type() {
             return type;
         }
-
-        @Override
-        public <R> R match(Matcher<R> matcher) {
-            return matcher.param(varId);
-        }
     }
 
-    static class Invoke<T> extends Var<T> {
-        private final Closure<T> closure;
+    static class Invoke<R> extends Var<R> {
+        final Closure<R> closure;
 
-        Invoke(long functionId, int varId, int nonVoidVarIndex, Closure<T> closure) {
+        Invoke(long functionId, int varId, int nonVoidVarIndex, Closure<R> closure) {
             super(functionId, varId, nonVoidVarIndex);
 
             this.closure = closure;
         }
 
         @Override
-        public Class<T> type() {
+        public Class<R> type() {
             return closure.returnType();
         }
-
-        @Override
-        public <R> R match(Matcher<R> matcher) {
-            return matcher.invoke(closure);
-        }
     }
-
-    interface Matcher<R> {
-        R param(int i);
-        R invoke(Closure<?> closure);
-    }
-
-    public abstract <R> R match(Matcher<R> matcher);
 }

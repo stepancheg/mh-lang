@@ -6,17 +6,14 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class Builder {
 
-  private static final AtomicLong FUNCTION_ID = new AtomicLong();
-
-  private final long functionId = FUNCTION_ID.addAndGet(1);
+  private final long functionId = FunctionId.nextId();
 
   private ArrayList<Var.Param<?>> params = new ArrayList<>();
 
-  private ArrayList<Var<?>> assignments = new ArrayList<>();
+  private ArrayList<Var.Invoke<?>> assignments = new ArrayList<>();
 
   private ArrayList<Var<?>> vars = new ArrayList<>();
   private ArrayList<Var<?>> nonVoidVars = new ArrayList<>();
@@ -67,37 +64,25 @@ public class Builder {
   }
 
   private MethodHandle step(int step, MethodHandle next) {
-    return assignments
-        .get(step)
-        .match(
-            new Var.Matcher<>() {
-              @Override
-              public MethodHandle param(int i) {
-                throw new IllegalStateException();
-              }
-
-              @Override
-              public MethodHandle invoke(Closure<?> closure) {
-                MethodHandle mh = closure.mh;
-                mh =
-                    MethodHandles.collectArguments(
-                        next,
-                        next.type().parameterCount()
-                            - (mh.type().returnType() != void.class ? 1 : 0),
-                        mh);
-                MethodType resultType =
-                    MethodType.methodType(mh.type().returnType(), mtAtStep(step));
-                int[] reorder = new int[mh.type().parameterCount()];
-                for (int i = 0; i != reorder.length; ++i) {
-                  if (i < resultType.parameterCount()) {
-                    reorder[i] = i;
-                  } else {
-                    reorder[i] = closure.args.get(i - resultType.parameterCount()).varId;
-                  }
-                }
-                return MethodHandles.permuteArguments(mh, resultType, reorder);
-              }
-            });
+    Var.Invoke<?> assignment = assignments.get(step);
+      MethodHandle mh = assignment.closure.mh;
+      mh =
+          MethodHandles.collectArguments(
+              next,
+              next.type().parameterCount()
+                  - (mh.type().returnType() != void.class ? 1 : 0),
+              mh);
+      MethodType resultType =
+          MethodType.methodType(mh.type().returnType(), mtAtStep(step));
+      int[] reorder = new int[mh.type().parameterCount()];
+      for (int i = 0; i != reorder.length; ++i) {
+        if (i < resultType.parameterCount()) {
+          reorder[i] = i;
+        } else {
+          reorder[i] = assignment.closure.args.get(i - resultType.parameterCount()).varId;
+        }
+      }
+      return MethodHandles.permuteArguments(mh, resultType, reorder);
   }
 
   public MethodHandle buildReturn(Var<?> returnValue) {
