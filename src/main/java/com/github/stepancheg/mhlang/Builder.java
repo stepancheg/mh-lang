@@ -6,6 +6,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
+import java.util.stream.Stream;
 
 public class Builder {
 
@@ -14,22 +15,20 @@ public class Builder {
   private ArrayList<Var.Param<?>> params = new ArrayList<>();
 
   private ArrayList<Var.Invoke<?>> assignments = new ArrayList<>();
-
-  private ArrayList<Var<?>> vars = new ArrayList<>();
-  private ArrayList<Var<?>> nonVoidVars = new ArrayList<>();
+  private ArrayList<Var.Invoke<?>> nonVoidAssignments = new ArrayList<>();
 
   public Builder() {}
 
   private int nextVarId() {
-    return vars.size();
+    return params.size() + assignments.size();
   }
 
   private int nextNonVoidIndex() {
-    return nonVoidVars.size();
+    return params.size() + nonVoidAssignments.size();
   }
 
   private boolean bodyStarted() {
-    return vars.size() != params.size();
+    return !assignments.isEmpty();
   }
 
   public <T> Var<T> addParam(Class<T> type) {
@@ -38,29 +37,29 @@ public class Builder {
         !bodyStarted(), "Cannot add function parameter after function body started");
     Var.Param<T> param = new Var.Param<>(functionId, nextVarId(), nextNonVoidIndex(), type);
     params.add(param);
-    vars.add(param);
-    nonVoidVars.add(param);
     return param;
   }
 
   public <R> Var<R> assign(Closure<R> closure) {
     Var.Invoke<R> var = new Var.Invoke<>(functionId, nextVarId(), nextNonVoidIndex(), closure);
-    vars.add(var);
-    if (var.type() != void.class) {
-      nonVoidVars.add(var);
-    }
     assignments.add(var);
+    if (var.type() != void.class) {
+      nonVoidAssignments.add(var);
+    }
     return var;
   }
 
-  private Class<?>[] mtAtStep(int step) {
+  private Class<?>[] paramsAtStep(int step) {
     int count;
-    if (step == vars.size() - params.size()) {
-      count = nonVoidVars.size();
+    if (step == assignments.size()) {
+      count = params.size() + nonVoidAssignments.size();
     } else {
-      count = vars.get(step + params.size()).nonVoidVarIndex;
+      count = assignments.get(step).nonVoidVarIndex;
     }
-    return nonVoidVars.stream().limit(count).map(Var::type).toArray(Class<?>[]::new);
+    return Stream.concat(
+      params.stream().map(Var.Param::type),
+      nonVoidAssignments.stream().map(Var.Invoke::type)
+      ).limit(count).toArray(Class<?>[]::new);
   }
 
   private MethodHandle step(int step, MethodHandle next) {
@@ -71,7 +70,7 @@ public class Builder {
             next,
             next.type().parameterCount() - (mh.type().returnType() != void.class ? 1 : 0),
             mh);
-    MethodType resultType = MethodType.methodType(mh.type().returnType(), mtAtStep(step));
+    MethodType resultType = MethodType.methodType(mh.type().returnType(), paramsAtStep(step));
     int[] reorder = new int[mh.type().parameterCount()];
     for (int i = 0; i != reorder.length; ++i) {
       if (i < resultType.parameterCount()) {
@@ -88,9 +87,9 @@ public class Builder {
   public MethodHandle buildReturn(Var<?> returnValue) {
     MethodHandle mh;
     if (returnValue.type() != void.class) {
-      mh = MhUtil.returnParam(mtAtStep(assignments.size()), returnValue.varId);
+      mh = MhUtil.returnParam(paramsAtStep(assignments.size()), returnValue.nonVoidVarIndex);
     } else {
-      mh = MhUtil.returnVoid(mtAtStep(assignments.size()));
+      mh = MhUtil.returnVoid(paramsAtStep(assignments.size()));
     }
 
     for (int i = assignments.size() - 1; i >= 0; --i) {
