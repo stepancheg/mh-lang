@@ -20,11 +20,9 @@ public class Closure<R> {
   final ImmutableList<Var<?>> args;
 
   public Closure(MethodHandle mh, ImmutableList<Var<?>> args) {
-    Preconditions.checkArgument(mh.type().parameterCount() == args.size());
+    Preconditions.checkArgument(mh.type().parameterCount() == args.size(), "mh %s does not match args %s", mh, args);
     for (int i = 0; i != args.size(); ++i) {
-      if (!mh.type().parameterType(i).equals(args.get(i).type())) {
-        throw new IllegalArgumentException();
-      }
+      Preconditions.checkArgument(mh.type().parameterType(i).equals(args.get(i).type()), "mh %s does not match args %s", mh, args);
     }
 
     this.mh = mh;
@@ -108,10 +106,20 @@ public class Closure<R> {
   public static Closure<Void> setField(Field field, Var<?> object, Var<?> value) {
     try {
       MethodHandle mh = MethodHandles.publicLookup().unreflectSetter(field);
-      return new Closure<>(mh, object);
+      return new Closure<>(mh, object, value);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  public static <AA, A> Closure<A> getArrayElement(Var<AA> array, Var<Integer> index) {
+    MethodHandle mh = MethodHandles.arrayElementGetter(array.type());
+    return new Closure<>(mh, array, index);
+  }
+
+  public static <AA, A> Closure<Void> setArrayElement(Var<AA> array, Var<Integer> index, Var<A> value) {
+    MethodHandle mh = MethodHandles.arrayElementSetter(array.type());
+    return new Closure<>(mh, array, index, value);
   }
 
   public static <A, R> Closure<R> function(Class<R> r, Var<A> a, Function<A, R> f) {

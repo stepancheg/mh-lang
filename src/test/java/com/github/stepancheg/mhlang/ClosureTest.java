@@ -192,4 +192,25 @@ public class ClosureTest {
     int l = (int) mh.invokeExact("ab");
     assertEquals(2, l);
   }
+
+  @Test
+  public void getArrayElement() throws Throwable {
+    Builder b = new Builder();
+    Var<long[]> pa = b.addParam(long[].class);
+    Var<Integer> pi = b.addParam(int.class);
+    MethodHandle mh = b.buildReturn(Closure.getArrayElement(pa, pi));
+    assertEquals(20, (long) mh.invokeExact(new long[] { 10, 20, 30 }, 1));
+  }
+
+  @Test
+  public void setArrayElement() throws Throwable {
+    Builder b = new Builder();
+    Var<String[]> pa = b.addParam(String[].class);
+    Var<Integer> pi = b.addParam(int.class);
+    Var<String> pv = b.addParam(String.class);
+    MethodHandle mh = b.buildReturn(Closure.setArrayElement(pa, pi, pv));
+    String[] a = new String[10];
+    mh.invokeExact(a, 4, "a");
+    assertEquals("a", a[4]);
+  }
 }

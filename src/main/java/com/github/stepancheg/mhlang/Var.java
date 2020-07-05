@@ -36,7 +36,7 @@ public abstract class Var<R> {
 
     @Override
     public String toString() {
-      return "p0: " + type;
+      return String.format("p%s: %s", varId, type.getSimpleName());
     }
   }
 
@@ -52,6 +52,11 @@ public abstract class Var<R> {
     @Override
     public Class<R> type() {
       return closure.returnType();
+    }
+
+    @Override
+    public String toString() {
+      return String.format("v%d: %s", varId, type().getSimpleName());
     }
   }
 }

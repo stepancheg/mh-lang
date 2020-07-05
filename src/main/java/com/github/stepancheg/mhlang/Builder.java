@@ -79,7 +79,7 @@ public class Builder {
       } else {
         Var<?> var = assignment.closure.args.get(i - resultType.parameterCount());
         Preconditions.checkState(var.functionId == functionId);
-        reorder[i] = var.varId;
+        reorder[i] = var.nonVoidVarIndex;
       }
     }
     return MethodHandles.permuteArguments(mh, resultType, reorder);
