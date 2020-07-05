@@ -9,7 +9,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 public class ClosureTest {
   @Test
@@ -119,13 +118,36 @@ public class ClosureTest {
   public void whileLoop() throws Throwable {
     Builder b = new Builder();
     Var<Integer> p = b.addParam(int.class);
-    MethodHandle mh = b.buildReturn(Closure.whileLoop(
-      Closure.constant(p),
-      v -> Closure.intPredicate(v, i -> (i & (i - 1)) != 0),
-      v -> Closure.intUnaryOperator(v, i -> i += 1)
-    ));
-    assertEquals(16, (int) mh.invokeExact(9));
-    assertEquals(16, (int) mh.invokeExact(16));
+    MethodHandle mh =
+        b.buildReturn(
+            Closure.whileLoop(
+                Closure.constant(String.class, ""),
+                v -> Closure.biFunction(boolean.class, p, v, (l, s) -> s.length() < l),
+                v -> Closure.function(String.class, v, s -> s + "a")));
+    assertEquals("aaa", (String) mh.invokeExact(3));
+  }
+
+  @Test
+  public void countedLoop() throws Throwable {
+    Builder b = new Builder();
+    Var<Long> begin = b.addParam(long.class);
+    Var<Long> end = b.addParam(long.class);
+    MethodHandle mh =
+        b.buildReturn(
+            Closure.countedLoop(
+                begin.cast(int.class),
+                end.cast(int.class),
+                Closure.constant(String.class, ""),
+                (vv, vi) ->
+                    Closure.biFunction(
+                        String.class,
+                        vv,
+                        vi,
+                        (v, i) -> {
+                          return v + (v.isEmpty() ? "" : " ") + i;
+                        })));
+    String r = (String) mh.invokeExact(3L, 7L);
+    assertEquals("3 4 5 6", r);
   }
 
   @Test

@@ -2,6 +2,7 @@ package com.github.stepancheg.mhlang;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -19,9 +20,7 @@ public class Closure<R> {
   final ImmutableList<Var<?>> args;
 
   public Closure(MethodHandle mh, ImmutableList<Var<?>> args) {
-    if (mh.type().parameterCount() != args.size()) {
-      throw new IllegalArgumentException();
-    }
+    Preconditions.checkArgument(mh.type().parameterCount() == args.size());
     for (int i = 0; i != args.size(); ++i) {
       if (!mh.type().parameterType(i).equals(args.get(i).type())) {
         throw new IllegalArgumentException();
@@ -46,19 +45,33 @@ public class Closure<R> {
   }
 
   @SuppressWarnings("unchecked")
-  public <R> Closure<R> cast(Class<R> clazz) {
+  public <S> Closure<S> cast(Class<S> clazz) {
     if (returnType() == clazz) {
-      return (Closure<R>) this;
+      return (Closure<S>) this;
     } else {
       return new Closure<>(
-          MethodHandles.explicitCastArguments(
-              mh, MethodType.methodType(clazz, mh.type().parameterArray())),
-          args);
+          MethodHandles.explicitCastArguments(mh, mh.type().changeReturnType(clazz)), args);
     }
   }
 
-  public static <R> Closure<R> constant(Var<R> v) {
+  public <S> Closure<S> filterReturnValue(Function<R, S> f) {
+    return new Closure<>(MethodHandles.filterReturnValue(mh, FunctionsMh.function(f)), args);
+  }
+
+  public Closure<Integer> filterReturnValueToInt(ToIntFunction<R> f) {
+    return new Closure<>(MethodHandles.filterReturnValue(mh, FunctionsMh.toIntFunction(f)), args);
+  }
+
+  public Closure<Boolean> filterReturnValueToBool(Predicate<R> f) {
+    return new Closure<>(MethodHandles.filterReturnValue(mh, FunctionsMh.predicate(f)), args);
+  }
+
+  public static <R> Closure<R> var(Var<R> v) {
     return new Closure<>(MethodHandles.identity(v.type()), ImmutableList.of(v));
+  }
+
+  public static <R> Closure<R> constant(Class<R> clazz, R r) {
+    return new Closure<R>(MethodHandles.constant(clazz, r));
   }
 
   public static Closure<Void> constantVoid() {
@@ -102,7 +115,7 @@ public class Closure<R> {
   }
 
   public static <A, R> Closure<R> function(Class<R> r, Var<A> a, Function<A, R> f) {
-    MethodHandle mh = FunctionsMh.functionApply(f);
+    MethodHandle mh = FunctionsMh.function(f);
     mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(r, a.type()));
     return new Closure<R>(mh, a);
   }
@@ -115,7 +128,7 @@ public class Closure<R> {
   }
 
   public static <A> Closure<Boolean> predicate(Var<A> a, Predicate<A> predicate) {
-    MethodHandle mh = FunctionsMh.predicateTest(predicate);
+    MethodHandle mh = FunctionsMh.predicate(predicate);
     mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(boolean.class, a.type()));
     return new Closure<>(mh, a);
   }
@@ -175,22 +188,26 @@ public class Closure<R> {
 
   public static <R> Closure<R> ifThenElse(Var<Boolean> cond, Var<R> thenVal, Var<R> elseVal) {
     Preconditions.checkArgument(thenVal.type().equals(elseVal.type()));
-    return Closure.ifThenElse(cond, Closure.constant(thenVal), Closure.constant(elseVal));
+    return Closure.ifThenElse(cond, Closure.var(thenVal), Closure.var(elseVal));
   }
 
   public static Closure<Void> ifThen(Var<Boolean> cond, Closure<?> thenCl) {
     return ifThenElse(cond, thenCl.cast(void.class), constantVoid());
   }
 
-  private Closure<R> moveParamTo0(Var<?> v) {
+  private Closure<R> moveParamTo0(Var<?>... vs) {
+    ImmutableMap<Var<?>, Integer> vsIndex = CollectionUtil.index(vs);
+
     Var<?>[] newArgs =
-        Stream.concat(Stream.of(v), args.stream().filter(a -> a != v)).toArray(Var[]::new);
+        Stream.concat(Arrays.stream(vs), args.stream().filter(a -> !vsIndex.containsKey(a)))
+            .toArray(Var[]::new);
 
     int[] reorder = new int[mh.type().parameterCount()];
-    int j = 1;
+    int j = vs.length;
     for (int i = 0; i != reorder.length; ++i) {
-      if (this.args.get(i) == v) {
-        reorder[i] = 0;
+      Integer special = vsIndex.get(this.args.get(i));
+      if (special != null) {
+        reorder[i] = special;
       } else {
         reorder[i] = j++;
       }
@@ -222,58 +239,81 @@ public class Closure<R> {
     return dropArguments(pos, args.toArray(Var[]::new));
   }
 
-  private static class VarUpdate<A, R> {
-    private final Var.Param<A> param;
+  private static class VarUpdate<R> {
+    private final ImmutableList<Var.Param<?>> param;
     private final Closure<R> closure;
 
-    public VarUpdate(Var.Param<A> param, Closure<R> closure) {
-      this.param = param;
+    VarUpdate(ImmutableList<Var.Param<?>> params, Closure<R> closure) {
+      this.param = params;
       this.closure = closure;
 
-      Preconditions.checkArgument(closure.args.get(0) == param);
+      Preconditions.checkArgument(closure.args.subList(0, params.size()).equals(params));
       Preconditions.checkArgument(
-          closure.args.subList(1, closure.args.size()).stream().noneMatch(v -> v == param));
+          closure.args.subList(params.size(), closure.args.size()).stream()
+              .noneMatch(params::contains));
     }
 
-    public ImmutableList<Var<?>> argsWithoutParam() {
-      return closure.args.subList(1, closure.args.size());
+    ImmutableList<Var<?>> argsWithoutParam() {
+      return closure.args.subList(param.size(), closure.args.size());
     }
   }
 
-  private static <A, R> VarUpdate<A, R> varUpdate(Class<A> arg, Function<Var<A>, Closure<R>> f) {
+  private static <A, R> VarUpdate<R> varUpdate(Class<A> arg, Function<Var<A>, Closure<R>> f) {
     Var.Param<A> param = new Var.Param<>(FunctionId.nextId(), 0, 0, arg);
     Closure<R> closure = f.apply(param);
     closure = closure.moveParamTo0(param);
-    return new VarUpdate<>(param, closure);
+    return new VarUpdate<>(ImmutableList.of(param), closure);
+  }
+
+  private static <A, B, R> VarUpdate<R> varUpdate(
+      Class<A> a0, Class<B> a1, BiFunction<Var<A>, Var<B>, Closure<R>> f) {
+    long functionId = FunctionId.nextId();
+    Var.Param<A> p0 = new Var.Param<>(functionId, 0, 0, a0);
+    Var.Param<B> p1 = new Var.Param<>(functionId, 1, 0, a1);
+    Closure<R> closure = f.apply(p0, p1);
+    closure = closure.moveParamTo0(p0, p1);
+    return new VarUpdate<>(ImmutableList.of(p0, p1), closure);
   }
 
   public static <R> Closure<R> whileLoop(
       Closure<R> init, Function<Var<R>, Closure<Boolean>> pred, Function<Var<R>, Closure<R>> body) {
     Class<R> vt = init.returnType();
 
-    VarUpdate<R, Boolean> predU = varUpdate(vt, pred);
-    VarUpdate<R, R> bodyU = varUpdate(vt, body);
+    VarUpdate<Boolean> predU = varUpdate(vt, pred);
+    VarUpdate<R> bodyU = varUpdate(vt, body);
 
-    ImmutableList.Builder<Var<?>> varsB = ImmutableList.builder();
-    varsB.addAll(init.args);
-    varsB.addAll(predU.argsWithoutParam());
-    varsB.addAll(bodyU.argsWithoutParam());
-    ImmutableList<Var<?>> vars = varsB.build();
+    SigUnifier sigUnifier =
+        new SigUnifier(init.args, predU.argsWithoutParam(), bodyU.argsWithoutParam());
 
-    Closure<R> initFull =
-        init.dropArguments(init.args.size(), bodyU.argsWithoutParam())
-            .dropArguments(init.args.size(), predU.argsWithoutParam());
+    Closure<R> initFull = sigUnifier.unify(init);
 
-    Closure<Boolean> predFull =
-        predU
-            .closure
-            .dropArguments(predU.closure.args.size(), bodyU.argsWithoutParam())
-            .dropArguments(1, init.args);
-    Closure<R> bodyFull =
-        bodyU.closure.dropArguments(1, predU.argsWithoutParam()).dropArguments(1, init.args);
+    Closure<Boolean> predFull = sigUnifier.unifyWithoutFirst(predU.closure, 1);
+    Closure<R> bodyFull = sigUnifier.unifyWithoutFirst(bodyU.closure, 1);
 
     MethodHandle mh = MethodHandles.whileLoop(initFull.mh, predFull.mh, bodyFull.mh);
 
-    return new Closure<>(mh, vars);
+    return new Closure<>(mh, sigUnifier.allVars);
+  }
+
+  public static <R> Closure<R> countedLoop(
+      Closure<Integer> start,
+      Closure<Integer> end,
+      Closure<R> init,
+      BiFunction<Var<R>, Var<Integer>, Closure<R>> body) {
+    Class<R> vt = init.returnType();
+
+    VarUpdate<R> bodyU = varUpdate(vt, int.class, body);
+
+    SigUnifier sigUnifier =
+        new SigUnifier(start.args, end.args, init.args, bodyU.argsWithoutParam());
+
+    Closure<Integer> startFull = sigUnifier.unify(start);
+    Closure<Integer> endFull = sigUnifier.unify(end);
+    Closure<R> initFull = sigUnifier.unify(init);
+    Closure<R> bodyFull = sigUnifier.unifyWithoutFirst(bodyU.closure, 2);
+
+    MethodHandle mh = MethodHandles.countedLoop(startFull.mh, endFull.mh, initFull.mh, bodyFull.mh);
+
+    return new Closure<>(mh, sigUnifier.allVars);
   }
 }

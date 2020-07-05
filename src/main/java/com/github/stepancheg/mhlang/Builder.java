@@ -65,24 +65,24 @@ public class Builder {
 
   private MethodHandle step(int step, MethodHandle next) {
     Var.Invoke<?> assignment = assignments.get(step);
-      MethodHandle mh = assignment.closure.mh;
-      mh =
-          MethodHandles.collectArguments(
-              next,
-              next.type().parameterCount()
-                  - (mh.type().returnType() != void.class ? 1 : 0),
-              mh);
-      MethodType resultType =
-          MethodType.methodType(mh.type().returnType(), mtAtStep(step));
-      int[] reorder = new int[mh.type().parameterCount()];
-      for (int i = 0; i != reorder.length; ++i) {
-        if (i < resultType.parameterCount()) {
-          reorder[i] = i;
-        } else {
-          reorder[i] = assignment.closure.args.get(i - resultType.parameterCount()).varId;
-        }
+    MethodHandle mh = assignment.closure.mh;
+    mh =
+        MethodHandles.collectArguments(
+            next,
+            next.type().parameterCount() - (mh.type().returnType() != void.class ? 1 : 0),
+            mh);
+    MethodType resultType = MethodType.methodType(mh.type().returnType(), mtAtStep(step));
+    int[] reorder = new int[mh.type().parameterCount()];
+    for (int i = 0; i != reorder.length; ++i) {
+      if (i < resultType.parameterCount()) {
+        reorder[i] = i;
+      } else {
+        Var<?> var = assignment.closure.args.get(i - resultType.parameterCount());
+        Preconditions.checkState(var.functionId == functionId);
+        reorder[i] = var.varId;
       }
-      return MethodHandles.permuteArguments(mh, resultType, reorder);
+    }
+    return MethodHandles.permuteArguments(mh, resultType, reorder);
   }
 
   public MethodHandle buildReturn(Var<?> returnValue) {
