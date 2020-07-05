@@ -19,11 +19,4 @@ class MhUtil {
   static MethodHandle returnVoid(Class<?>[] params) {
     return MethodHandles.empty(MethodType.methodType(void.class, params));
   }
-
-  static MethodHandle ifThenElse(Class<?> r) {
-    return MethodHandles.guardWithTest(
-        returnParam(new Class[] {boolean.class}, 0),
-        returnParam(new Class[] {boolean.class, r, r}, 1),
-        returnParam(new Class[] {boolean.class, r, r}, 2));
-  }
 }

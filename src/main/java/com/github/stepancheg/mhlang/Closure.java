@@ -79,7 +79,7 @@ public class Closure<R> {
   public static <R> Closure<R> method(Method method, Var<?>... args) {
     try {
       MethodHandle mh = MethodHandles.publicLookup().unreflect(method);
-      return new Closure<R>(mh, args);
+      return new Closure<>(mh, args);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
@@ -229,22 +229,6 @@ public class Closure<R> {
     MethodHandle mh = MethodHandles.permuteArguments(this.mh, t, reorder);
 
     return new Closure<>(mh, newArgs);
-  }
-
-  private Closure<R> dropArguments(int pos, Var<?>... args) {
-    Var[] newArgs =
-        ArrayUtil.concat(
-            this.args.subList(0, pos).toArray(new Var[0]),
-            args,
-            this.args.subList(pos, this.args.size()).toArray(new Var[0]));
-    MethodHandle newMh =
-        MethodHandles.dropArguments(
-            this.mh, pos, Arrays.stream(args).map(Var::type).toArray(Class[]::new));
-    return new Closure<R>(newMh, newArgs);
-  }
-
-  private Closure<R> dropArguments(int pos, ImmutableList<Var<?>> args) {
-    return dropArguments(pos, args.toArray(Var[]::new));
   }
 
   private static class VarUpdate<R> {

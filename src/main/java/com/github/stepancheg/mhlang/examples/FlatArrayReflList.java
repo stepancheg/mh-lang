@@ -1,19 +1,18 @@
 package com.github.stepancheg.mhlang.examples;
 
-import com.github.stepancheg.mhlang.Builder;
-import com.github.stepancheg.mhlang.Closure;
-import com.github.stepancheg.mhlang.Var;
 import org.objenesis.instantiator.ObjectInstantiator;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.AbstractList;
 import java.util.Arrays;
 
+/**
+ * Reflective implementation of {@link com.github.stepancheg.mhlang.examples.FlatArrayMhList}.
+ *
+ * <p>Implemented to compare performance of plain reflection vs MH reflection.
+ */
 public class FlatArrayReflList<T> extends AbstractList<T> {
 
   private final Factory<T> factory;

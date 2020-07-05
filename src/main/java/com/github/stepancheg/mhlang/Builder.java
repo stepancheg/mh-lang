@@ -108,4 +108,12 @@ public class Builder {
   public MethodHandle buildReturnVoid() {
     return buildReturn(Closure.constantVoid());
   }
+
+  public Closure<Void> buildReturnVoidClosure() {
+    throw new RuntimeException("not impl");
+  }
+
+  public Closure<Void> buildReturnClosure() {
+    throw new RuntimeException("not impl");
+  }
 }

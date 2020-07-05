@@ -18,13 +18,4 @@ public class MhUtilTest {
     boolean r2 = (boolean) mh2.invokeExact(5, "a", true);
     assertTrue(r2);
   }
-
-  @Test
-  public void ifThenElse() throws Throwable {
-    MethodHandle mh = MhUtil.ifThenElse(int.class);
-    int a = (int) mh.invokeExact(true, 3, 4);
-    assertEquals(3, a);
-    int b = (int) mh.invokeExact(false, 3, 4);
-    assertEquals(4, b);
-  }
 }
