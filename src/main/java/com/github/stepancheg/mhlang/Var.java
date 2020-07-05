@@ -2,11 +2,9 @@ package com.github.stepancheg.mhlang;
 
 public abstract class Var<R> extends Expr<R> {
   final long functionId;
-  final int varId;
 
-  private Var(long functionId, int varId) {
+  private Var(long functionId) {
     this.functionId = functionId;
-    this.varId = varId;
   }
 
   @Override
@@ -22,10 +20,12 @@ public abstract class Var<R> extends Expr<R> {
   }
 
   static class Param<T> extends Var<T> {
+    private final int varId;
     private final Class<T> type;
 
     Param(long functionId, int varId, Class<T> type) {
-      super(functionId, varId);
+      super(functionId);
+      this.varId = varId;
       this.type = type;
     }
 
@@ -41,10 +41,12 @@ public abstract class Var<R> extends Expr<R> {
   }
 
   static class Invoke<R> extends Var<R> {
+    private final int varId;
     final Closure<R> closure;
 
     Invoke(long functionId, int varId, Closure<R> closure) {
-      super(functionId, varId);
+      super(functionId);
+      this.varId = varId;
 
       this.closure = closure;
     }
