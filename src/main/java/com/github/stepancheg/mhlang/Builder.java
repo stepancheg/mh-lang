@@ -17,6 +17,21 @@ public class Builder {
   private ArrayList<Var.Invoke<?>> assignments = new ArrayList<>();
   private ArrayList<Var.Invoke<?>> nonVoidAssignments = new ArrayList<>();
 
+  private static class Step {
+    private final Class<?>[] signatureWithout;
+    private final Var.Invoke<?> assignment;
+    private final Class<?>[] signatureWith;
+
+    public Step(Class<?>[] signatureWithout, Var.Invoke<?> assignment) {
+      this.signatureWithout = signatureWithout;
+      this.assignment = assignment;
+      this.signatureWith = assignment.type() != void.class ?
+        ArrayUtil.concat(signatureWithout, new Class<?>[] { assignment.type() }) : signatureWithout;
+    }
+  }
+
+  private ArrayList<Step> steps = new ArrayList<>();
+
   public Builder() {}
 
   private int nextVarId() {
@@ -40,37 +55,54 @@ public class Builder {
     return param;
   }
 
+  private Class<?>[] currentParams() {
+    if (steps.isEmpty()) {
+      return params.stream().map(Var.Param::type).toArray(Class<?>[]::new);
+    } else {
+      return steps.get(steps.size() - 1).signatureWith;
+    }
+  }
+
   public <R> Var<R> assign(Closure<R> closure) {
     Var.Invoke<R> var = new Var.Invoke<>(functionId, nextVarId(), nextNonVoidIndex(), closure);
     assignments.add(var);
     if (var.type() != void.class) {
       nonVoidAssignments.add(var);
     }
+    steps.add(new Step(currentParams(), var));
     return var;
   }
 
-  private Class<?>[] paramsAtStep(int step) {
-    int count;
-    if (step == assignments.size()) {
-      count = params.size() + nonVoidAssignments.size();
-    } else {
-      count = assignments.get(step).nonVoidVarIndex;
+  private int varIndex(Var<?> var) {
+    int i = 0;
+    for (Var.Param<?> param : params) {
+      if (var == param) {
+        return i;
+      }
+      ++i;
     }
-    return Stream.concat(
-      params.stream().map(Var.Param::type),
-      nonVoidAssignments.stream().map(Var.Invoke::type)
-      ).limit(count).toArray(Class<?>[]::new);
+    for (Var.Invoke<?> assignment : nonVoidAssignments) {
+      if (assignment == var) {
+        return i;
+      }
+      ++i;
+    }
+    throw new IllegalStateException();
   }
 
-  private MethodHandle step(int step, MethodHandle next) {
-    Var.Invoke<?> assignment = assignments.get(step);
+  private MethodHandle step(int stepIndex, MethodHandle next) {
+    Preconditions.checkArgument(stepIndex >= 0 && stepIndex < steps.size());
+
+    Step step = steps.get(stepIndex);
+
+    Var.Invoke<?> assignment = step.assignment;
     MethodHandle mh = assignment.closure.mh;
     mh =
         MethodHandles.collectArguments(
             next,
             next.type().parameterCount() - (mh.type().returnType() != void.class ? 1 : 0),
             mh);
-    MethodType resultType = MethodType.methodType(mh.type().returnType(), paramsAtStep(step));
+    MethodType resultType = MethodType.methodType(mh.type().returnType(), step.signatureWithout);
     int[] reorder = new int[mh.type().parameterCount()];
     for (int i = 0; i != reorder.length; ++i) {
       if (i < resultType.parameterCount()) {
@@ -78,7 +110,7 @@ public class Builder {
       } else {
         Var<?> var = assignment.closure.args.get(i - resultType.parameterCount());
         Preconditions.checkState(var.functionId == functionId);
-        reorder[i] = var.nonVoidVarIndex;
+        reorder[i] = varIndex(var);
       }
     }
     return MethodHandles.permuteArguments(mh, resultType, reorder);
@@ -87,9 +119,9 @@ public class Builder {
   public MethodHandle buildReturn(Var<?> returnValue) {
     MethodHandle mh;
     if (returnValue.type() != void.class) {
-      mh = MhUtil.returnParam(paramsAtStep(assignments.size()), returnValue.nonVoidVarIndex);
+      mh = MhUtil.returnParam(currentParams(), returnValue.nonVoidVarIndex);
     } else {
-      mh = MhUtil.returnVoid(paramsAtStep(assignments.size()));
+      mh = MhUtil.returnVoid(currentParams());
     }
 
     for (int i = assignments.size() - 1; i >= 0; --i) {
