@@ -1,7 +1,7 @@
 package com.github.stepancheg.mhlang.examples;
 
-import com.github.stepancheg.mhlang.Builder;
 import com.github.stepancheg.mhlang.Closure;
+import com.github.stepancheg.mhlang.MhBuilder;
 import com.github.stepancheg.mhlang.Var;
 
 import java.lang.invoke.MethodHandle;
@@ -46,7 +46,7 @@ public class SumFields {
       throw new RuntimeException(e);
     }
 
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Data> data = b.addParam(Data.class);
     Var<Integer> sum = b.assign(Closure.constant(int.class, 0));
     for (Field field : Data.class.getDeclaredFields()) {

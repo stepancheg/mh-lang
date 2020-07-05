@@ -1,7 +1,7 @@
 package com.github.stepancheg.mhlang.examples;
 
-import com.github.stepancheg.mhlang.Builder;
 import com.github.stepancheg.mhlang.Closure;
+import com.github.stepancheg.mhlang.MhBuilder;
 import com.github.stepancheg.mhlang.Var;
 import org.objenesis.instantiator.ObjectInstantiator;
 import org.objenesis.strategy.StdInstantiatorStrategy;
@@ -110,7 +110,7 @@ public class FlatArrayMhList<T> extends AbstractList<T> {
     private static <T> MethodHandle getImpl(Class<T> tClass, Field[] fields) {
       ObjectInstantiator<T> instantiator = new StdInstantiatorStrategy().newInstantiatorOf(tClass);
 
-      Builder b = new Builder();
+      MhBuilder b = new MhBuilder();
       Var<Object[]> pArrays = b.addParam(Object[].class);
       Var<Integer> pI = b.addParam(int.class);
       Var<T> instanceObject =
@@ -129,7 +129,7 @@ public class FlatArrayMhList<T> extends AbstractList<T> {
 
     @SuppressWarnings("unchecked")
     private static <T> MethodHandle setImpl(Class<T> tClass, Field[] fields) {
-      Builder b = new Builder();
+      MhBuilder b = new MhBuilder();
       Var<Object[]> pArrays = b.addParam(Object[].class);
       Var<Integer> pI = b.addParam(int.class);
       Var<T> pInstance = (Var<T>) b.addParam(Object.class);
@@ -147,7 +147,7 @@ public class FlatArrayMhList<T> extends AbstractList<T> {
     }
 
     private static MethodHandle resize(Field[] fields) {
-      Builder b = new Builder();
+      MhBuilder b = new MhBuilder();
       Var<Object[]> pArrays = b.addParam(Object[].class);
       Var<Integer> pNewSize = b.addParam(int.class);
       for (int fi = 0; fi < fields.length; fi++) {

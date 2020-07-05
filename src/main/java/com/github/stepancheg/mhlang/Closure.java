@@ -11,6 +11,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.*;
 import java.util.stream.Stream;
 
@@ -58,6 +59,25 @@ public class Closure<R> extends Expr<R> {
     return new Closure<>(collectedMh, vars.build().reverse());
   }
 
+  public static Closure<Boolean> not(Expr<Boolean> expr) {
+    return expr.asClosure().filterReturnValue(MhUtil.NOT);
+  }
+
+  public Closure<Boolean> isNotNull() {
+    if (type().isPrimitive()) {
+      ClosureBuilder b = new ClosureBuilder();
+      // preserve side effect
+      b.assign(asClosure());
+      return b.buildReturn(constant(true));
+    } else {
+      return asClosure().cast(Object.class).filterReturnValue(MhUtil.IS_NOT_NULL);
+    }
+  }
+
+  public Closure<Boolean> isNull() {
+    return Closure.not(isNotNull());
+  }
+
   public MethodType methodType() {
     return mh.type();
   }
@@ -83,16 +103,23 @@ public class Closure<R> extends Expr<R> {
     }
   }
 
+  public <S> Closure<S> filterReturnValue(MethodHandle filter) {
+    Preconditions.checkArgument(filter.type().parameterCount() == 1, "filter mh must have single arg: %s", filter);
+    Preconditions.checkArgument(filter.type().parameterType(0) == mh.type().returnType(),
+      "filter mh %s parameter must match this return %s", mh, this);
+    return new Closure<>(MethodHandles.filterReturnValue(this.mh, filter), args);
+  }
+
   public <S> Closure<S> filterReturnValue(Function<R, S> f) {
-    return new Closure<>(MethodHandles.filterReturnValue(mh, FunctionsMh.function(f)), args);
+    return filterReturnValue(FunctionsMh.function(f));
   }
 
   public Closure<Integer> filterReturnValueToInt(ToIntFunction<R> f) {
-    return new Closure<>(MethodHandles.filterReturnValue(mh, FunctionsMh.toIntFunction(f)), args);
+    return filterReturnValue(FunctionsMh.toIntFunction(f));
   }
 
   public Closure<Boolean> filterReturnValueToBool(Predicate<R> f) {
-    return new Closure<>(MethodHandles.filterReturnValue(mh, FunctionsMh.predicate(f)), args);
+    return filterReturnValue(FunctionsMh.predicate(f));
   }
 
   public static <R> Closure<R> var(Var<R> v) {
@@ -141,7 +168,7 @@ public class Closure<R> extends Expr<R> {
   }
 
   public static Closure<Void> constantVoid() {
-    return new Closure<>(MhUtil.NOP);
+    return new Closure<>(MethodHandles.zero(void.class));
   }
 
   public static <R> Closure<R> method(Method method, Expr<?>... args) {
@@ -163,8 +190,13 @@ public class Closure<R> extends Expr<R> {
   }
 
   public static <R> Closure<R> getField(Field field, Expr<?> object) {
+    MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+    return getField(field, object, lookup);
+  }
+
+  public static <R> Closure<R> getField(Field field, Expr<?> object, MethodHandles.Lookup lookup) {
     try {
-      MethodHandle mh = MethodHandles.publicLookup().unreflectGetter(field);
+      MethodHandle mh = lookup.unreflectGetter(field);
       return Closure.fold(mh, object);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
@@ -172,8 +204,13 @@ public class Closure<R> extends Expr<R> {
   }
 
   public static Closure<Void> setField(Field field, Expr<?> object, Expr<?> value) {
+    MethodHandles.Lookup lookup = MethodHandles.publicLookup();
+    return setField(field, object, value, lookup);
+  }
+
+  public static Closure<Void> setField(Field field, Expr<?> object, Expr<?> value, MethodHandles.Lookup lookup) {
     try {
-      MethodHandle mh = MethodHandles.publicLookup().unreflectSetter(field);
+      MethodHandle mh = lookup.unreflectSetter(field);
       return Closure.fold(mh, object, value);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
@@ -234,9 +271,38 @@ public class Closure<R> extends Expr<R> {
     return Closure.fold(mh, a);
   }
 
-  public static Closure<Boolean> intPredicate(Var<Integer> a, IntPredicate f) {
+  public static Closure<Boolean> intPredicate(Expr<Integer> a, IntPredicate f) {
     MethodHandle mh = FunctionsMh.intPredicate(f);
-    return new Closure<>(mh, a);
+    return Closure.fold(mh, a);
+  }
+
+  public static <A> Closure<Boolean> same(Expr<A> a, Expr<A> b) {
+    Preconditions.checkArgument(a.type() == b.type());
+    return Closure.fold(MhUtil.same(a.type()), a, b);
+  }
+
+  public static <A> Closure<Boolean> equals(Expr<A> a, Expr<A> b) {
+    Preconditions.checkArgument(a.type() == b.type());
+    return Closure.fold(MhUtil.eq(a.type()), a, b);
+  }
+
+  public static <A> Closure<Integer> hashCode(Expr<A> a) {
+    Preconditions.checkArgument(a.type() != void.class);
+    return Closure.fold(MhUtil.hashCode(a.type()), a);
+  }
+
+  public static <R> Closure<R> plus(Expr<R> a, Expr<R> b) {
+    Preconditions.checkArgument(a.type() == b.type());
+    return Closure.fold(MhUtil.plus(a.type()), a, b);
+  }
+
+  public static <R> Closure<R> mul(Expr<R> a, Expr<R> b) {
+    Preconditions.checkArgument(a.type() == b.type());
+    return Closure.fold(MhUtil.mul(a.type()), a, b);
+  }
+
+  public static <R> Closure<R> throwException(Class<R> returnType, Expr<? extends Throwable> exception) {
+    return Closure.fold(MethodHandles.throwException(returnType, exception.type()), exception);
   }
 
   public static <R> Closure<R> ifThenElse(Expr<Boolean> cond, Closure<R> thenCl, Closure<R> elseCl) {
@@ -269,6 +335,48 @@ public class Closure<R> extends Expr<R> {
 
   public static Closure<Void> ifThen(Expr<Boolean> cond, Closure<?> thenCl) {
     return ifThenElse(cond, thenCl.cast(void.class), constantVoid());
+  }
+
+  public static Closure<Boolean> or(Expr<Boolean> a, Expr<Boolean> b) {
+    return ifThenElse(a, Closure.constant(true), b.asClosure());
+  }
+
+  public static Closure<Boolean> and(Expr<Boolean> a, Expr<Boolean> b) {
+    return ifThenElse(a, b.asClosure(), Closure.constant(false));
+  }
+
+  @SafeVarargs
+  public static Closure<Boolean> or(Expr<Boolean>... as) {
+    if (as.length == 0) {
+      return constant(true);
+    } else {
+      return or(as[0], or(Arrays.copyOfRange(as, 1, as.length)));
+    }
+  }
+
+  public static Closure<Boolean> or(List<Expr<Boolean>> as) {
+    if (as.isEmpty()) {
+      return constant(true);
+    } else {
+      return or(as.get(0), or(as.subList(1, as.size())));
+    }
+  }
+
+  @SafeVarargs
+  public static Closure<Boolean> and(Expr<Boolean>... as) {
+    if (as.length == 0) {
+      return constant(true);
+    } else {
+      return and(as[0], and(Arrays.copyOfRange(as, 1, as.length)));
+    }
+  }
+
+  public static Closure<Boolean> and(List<Expr<Boolean>> args) {
+    if (args.isEmpty()) {
+      return constant(true);
+    } else {
+      return and(args.get(0), and(args.subList(1, args.size())));
+    }
   }
 
   private Closure<R> moveParamTo0(Var<?>... vs) {

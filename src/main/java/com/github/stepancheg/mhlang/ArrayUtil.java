@@ -4,10 +4,12 @@ import com.google.common.base.Preconditions;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
+import java.util.List;
 
 class ArrayUtil {
 
   @SuppressWarnings("unchecked")
+  @SafeVarargs
   static <A> A[] concat(A[]... as) {
     Preconditions.checkArgument(as.length != 0);
     int len = Arrays.stream(as).mapToInt(a -> a.length).sum();
@@ -19,5 +21,9 @@ class ArrayUtil {
     }
     Preconditions.checkState(i == len);
     return r;
+  }
+
+  static <A> A[] concat(List<A> list, A[] array) {
+    return concat(list.toArray(Arrays.copyOf(array, 0)), array);
   }
 }

@@ -13,7 +13,7 @@ import static org.junit.Assert.*;
 public class ClosureTest {
   @Test
   public void function() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String> p = b.addParam(String.class);
     Var r = b.assign(Closure.function(String.class, p, s -> s + "!"));
     MethodHandle mh = b.buildReturn(r);
@@ -24,7 +24,7 @@ public class ClosureTest {
 
   @Test
   public void biFunction() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String> p0 = b.addParam(String.class);
     Var<String> p1 = b.addParam(String.class);
     Var r = b.assign(Closure.biFunction(String.class, p0, p1, (s1, s2) -> s1 + "-" + s2));
@@ -36,7 +36,7 @@ public class ClosureTest {
 
   @Test
   public void predicate() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String> p = b.addParam(String.class);
     MethodHandle mh = b.buildReturn(Closure.predicate(p, s -> !s.isEmpty()));
     boolean b1 = (boolean) mh.invokeExact("a");
@@ -47,7 +47,7 @@ public class ClosureTest {
 
   @Test
   public void biPredicate() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String> p0 = b.addParam(String.class);
     Var<String> p1 = b.addParam(String.class);
     Var<Boolean> shorter = b.assign(Closure.biPredicate(p0, p1, (x, y) -> x.length() < y.length()));
@@ -62,7 +62,7 @@ public class ClosureTest {
 
   @Test
   public void supplier() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     int[] i = new int[] {0};
     MethodHandle mh = b.buildReturn(Closure.supplier(String.class, () -> "s" + i[0]++));
 
@@ -75,7 +75,7 @@ public class ClosureTest {
 
   @Test
   public void runnable() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     ArrayList<Object> l = new ArrayList<>();
     b.assign(Closure.runnable(() -> l.add("a")));
     MethodHandle mh = b.buildReturnVoid();
@@ -85,7 +85,7 @@ public class ClosureTest {
 
   @Test
   public void ifThenElse() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Boolean> p0 = b.addParam(boolean.class);
     Var<String> p1 = b.addParam(String.class);
     Var<String> p2 = b.addParam(String.class);
@@ -103,7 +103,7 @@ public class ClosureTest {
   public void ifThen() throws Throwable {
     int[] i = new int[1];
 
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Boolean> p = b.addParam(boolean.class);
     b.assign(Closure.ifThen(p, Closure.runnable(() -> ++i[0])));
     MethodHandle mh = b.buildReturnVoid();
@@ -116,7 +116,7 @@ public class ClosureTest {
 
   @Test
   public void whileLoop() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Integer> p = b.addParam(int.class);
     MethodHandle mh =
         b.buildReturn(
@@ -128,8 +128,28 @@ public class ClosureTest {
   }
 
   @Test
+  public void throwException() throws Throwable {
+    RuntimeException exception = new RuntimeException();
+
+    MhBuilder b = new MhBuilder();
+    Var<Boolean> cond = b.addParam(boolean.class);
+    MethodHandle mh =
+        b.buildReturn(
+            Closure.ifThen(cond, Closure.throwException(void.class, Closure.constant(exception))));
+
+    mh.invokeExact(false);
+
+    try {
+      mh.invokeExact(true);
+      fail();
+    } catch (Exception e) {
+      assertSame(exception, e);
+    }
+  }
+
+  @Test
   public void countedLoop() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Long> begin = b.addParam(long.class);
     Var<Long> end = b.addParam(long.class);
     MethodHandle mh =
@@ -152,7 +172,7 @@ public class ClosureTest {
 
   @Test
   public void castBox() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Integer> p = b.addParam(int.class);
     MethodHandle mh = b.buildReturn(p.cast(Integer.class));
 
@@ -162,7 +182,7 @@ public class ClosureTest {
 
   @Test
   public void castUnbox() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<Integer> p = b.addParam(Integer.class);
     MethodHandle mh = b.buildReturn(p.cast(Integer.class));
 
@@ -174,7 +194,7 @@ public class ClosureTest {
   @Test
   public void constructor() throws Throwable {
     Constructor<StringBuilder> constructor = StringBuilder.class.getConstructor(String.class);
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String> p = b.addParam(String.class);
     MethodHandle mh = b.buildReturn(Closure.constructor(constructor, p));
 
@@ -185,7 +205,7 @@ public class ClosureTest {
   @Test
   public void method() throws Throwable {
     Method m = String.class.getMethod("length");
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String> p = b.addParam(String.class);
     MethodHandle mh = b.buildReturn(Closure.method(m, p));
 
@@ -195,16 +215,16 @@ public class ClosureTest {
 
   @Test
   public void getArrayElement() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<long[]> pa = b.addParam(long[].class);
     Var<Integer> pi = b.addParam(int.class);
     MethodHandle mh = b.buildReturn(Closure.getArrayElement(pa, pi));
-    assertEquals(20, (long) mh.invokeExact(new long[] { 10, 20, 30 }, 1));
+    assertEquals(20, (long) mh.invokeExact(new long[] {10, 20, 30}, 1));
   }
 
   @Test
   public void setArrayElement() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     Var<String[]> pa = b.addParam(String[].class);
     Var<Integer> pi = b.addParam(int.class);
     Var<String> pv = b.addParam(String.class);
@@ -216,7 +236,11 @@ public class ClosureTest {
 
   @Test
   public void fold() throws Throwable {
-    Closure<Object> cl = Closure.fold(FunctionsMh.biFunction((String a, String b) -> a + b), Closure.constant(Object.class, "a"), Closure.constant(Object.class, "b"));
+    Closure<Object> cl =
+        Closure.fold(
+            FunctionsMh.biFunction((String a, String b) -> a + b),
+            Closure.constant(Object.class, "a"),
+            Closure.constant(Object.class, "b"));
     assertEquals("ab", cl.mh.invokeExact());
   }
 
@@ -224,11 +248,36 @@ public class ClosureTest {
   public void foldOrder() throws Throwable {
     // Assert fold evaluates the arguments in argument order
     ArrayList<String> calls = new ArrayList<>();
-    Closure<Object> cl = Closure.fold(FunctionsMh.biFunction((String a, String b) -> a + b),
-      Closure.supplier(Object.class, () -> { calls.add("a"); return "a"; }),
-      Closure.supplier(Object.class, () -> { calls.add("b"); return "b"; })
-      );
+    Closure<Object> cl =
+        Closure.fold(
+            FunctionsMh.biFunction((String a, String b) -> a + b),
+            Closure.supplier(
+                Object.class,
+                () -> {
+                  calls.add("a");
+                  return "a";
+                }),
+            Closure.supplier(
+                Object.class,
+                () -> {
+                  calls.add("b");
+                  return "b";
+                }));
     assertEquals("ab", cl.mh.invokeExact());
     assertEquals(ImmutableList.of("a", "b"), calls);
+  }
+
+  @Test
+  public void or() throws Throwable {
+    Closure<Boolean> orTrue =
+        Closure.or(
+            Closure.constant(true),
+            Closure.throwException(boolean.class, Closure.constant(new RuntimeException())));
+    assertTrue((boolean) orTrue.mh.invokeExact());
+  }
+
+  @Test
+  public void plus() throws Throwable {
+    assertEquals(5, (int) Closure.plus(Closure.constant(2), Closure.constant(3)).mh.invokeExact());
   }
 }

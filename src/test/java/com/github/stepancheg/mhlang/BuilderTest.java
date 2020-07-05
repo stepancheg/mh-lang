@@ -12,7 +12,7 @@ public class BuilderTest {
 
   @Test
   public void simpleReturn() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     b.addParam(String.class);
     Var<Integer> p = b.addParam(int.class);
     b.addParam(boolean.class);
@@ -23,14 +23,14 @@ public class BuilderTest {
 
   @Test
   public void voidHandle() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     MethodHandle mh = b.buildReturnVoid();
     mh.invokeExact();
   }
 
   @Test
   public void sideEffectsInOrder() throws Throwable {
-    Builder b = new Builder();
+    MhBuilder b = new MhBuilder();
     ArrayList<String> l = new ArrayList<>();
     b.assign(Closure.runnable(() -> l.add("a")));
     b.assign(Closure.runnable(() -> l.add("b")));
