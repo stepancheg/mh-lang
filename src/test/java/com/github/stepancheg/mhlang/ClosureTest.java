@@ -213,4 +213,22 @@ public class ClosureTest {
     mh.invokeExact(a, 4, "a");
     assertEquals("a", a[4]);
   }
+
+  @Test
+  public void fold() throws Throwable {
+    Closure<Object> cl = Closure.fold(FunctionsMh.biFunction((String a, String b) -> a + b), Closure.constant(Object.class, "a"), Closure.constant(Object.class, "b"));
+    assertEquals("ab", cl.mh.invokeExact());
+  }
+
+  @Test
+  public void foldOrder() throws Throwable {
+    // Assert fold evaluates the arguments in argument order
+    ArrayList<String> calls = new ArrayList<>();
+    Closure<Object> cl = Closure.fold(FunctionsMh.biFunction((String a, String b) -> a + b),
+      Closure.supplier(Object.class, () -> { calls.add("a"); return "a"; }),
+      Closure.supplier(Object.class, () -> { calls.add("b"); return "b"; })
+      );
+    assertEquals("ab", cl.mh.invokeExact());
+    assertEquals(ImmutableList.of("a", "b"), calls);
+  }
 }

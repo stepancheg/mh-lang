@@ -1,6 +1,6 @@
 package com.github.stepancheg.mhlang;
 
-public abstract class Var<R> {
+public abstract class Var<R> extends Expr<R> {
   final long functionId;
   final int varId;
   final int nonVoidVarIndex;
@@ -11,8 +11,10 @@ public abstract class Var<R> {
     this.nonVoidVarIndex = nonVoidVarIndex;
   }
 
+  @Override
   public abstract Class<R> type();
 
+  @Override
   public Closure<R> asClosure() {
     return Closure.var(this);
   }
@@ -51,7 +53,7 @@ public abstract class Var<R> {
 
     @Override
     public Class<R> type() {
-      return closure.returnType();
+      return closure.type();
     }
 
     @Override

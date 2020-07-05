@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.function.*;
 import java.util.stream.Stream;
 
-public class Closure<R> {
+public class Closure<R> extends Expr<R> {
 
   final MethodHandle mh;
   final ImmutableList<Var<?>> args;
@@ -33,18 +33,49 @@ public class Closure<R> {
     this(mh, ImmutableList.copyOf(args));
   }
 
+  public static <R> Closure<R> fold(MethodHandle mh, Expr<?>... args) {
+    Preconditions.checkArgument(mh.type().parameterCount() == args.length, "mh %s does not match args %s", mh, args);
+    for (int i = 0; i != args.length; ++i) {
+      Preconditions.checkArgument(mh.type().parameterType(i).equals(args[i].type()), "mh %s does not match args %s", mh, args);
+    }
+
+    MethodHandle collectedMh = mh;
+
+    ImmutableList.Builder<Var<?>> vars = ImmutableList.builder();
+
+    for (int i = args.length - 1; i >= 0; --i) {
+      Expr<?> arg = args[i];
+      if (arg instanceof Var<?>) {
+        vars.add((Var<?>) arg);
+      } else if (arg instanceof Closure<?>) {
+        collectedMh = MethodHandles.collectArguments(collectedMh, i, ((Closure<?>) arg).mh);
+        vars.addAll(((Closure<?>) arg).args.reverse());
+      } else {
+        throw new IllegalArgumentException("unknown arg: " + arg.getClass().getName());
+      }
+    }
+
+    return new Closure<>(collectedMh, vars.build().reverse());
+  }
+
   public MethodType methodType() {
     return mh.type();
   }
 
   @SuppressWarnings("unchecked")
-  public Class<R> returnType() {
+  @Override
+  public Class<R> type() {
     return (Class<R>) mh.type().returnType();
+  }
+
+  @Override
+  public Closure<R> asClosure() {
+    return this;
   }
 
   @SuppressWarnings("unchecked")
   public <S> Closure<S> cast(Class<S> clazz) {
-    if (returnType() == clazz) {
+    if (type() == clazz) {
       return (Closure<S>) this;
     } else {
       return new Closure<>(
@@ -69,85 +100,122 @@ public class Closure<R> {
   }
 
   public static <R> Closure<R> constant(Class<R> clazz, R r) {
-    return new Closure<R>(MethodHandles.constant(clazz, r));
+    return new Closure<>(MethodHandles.constant(clazz, r));
+  }
+
+  @SuppressWarnings("unchecked")
+  public static <R> Closure<R> constant(R r) {
+    if (r == null) {
+      return (Closure<R>) constant(Object.class, null);
+    } else {
+      return constant((Class<R>) r.getClass(), r);
+    }
+  }
+
+  public static Closure<Boolean> constant(boolean b) {
+    return constant(boolean.class, b);
+  }
+
+  public static Closure<Integer> constant(int i) {
+    return constant(int.class, i);
+  }
+
+  public static Closure<Short> constant(short i) {
+    return constant(short.class, i);
+  }
+
+  public static Closure<Character> constant(char c) {
+    return constant(char.class, c);
+  }
+
+  public static Closure<Long> constant(long i) {
+    return constant(long.class, i);
+  }
+
+  public static Closure<Float> constant(float f) {
+    return constant(float.class, f);
+  }
+
+  public static Closure<Double> constant(double f) {
+    return constant(double.class, f);
   }
 
   public static Closure<Void> constantVoid() {
     return new Closure<>(MhUtil.NOP);
   }
 
-  public static <R> Closure<R> method(Method method, Var<?>... args) {
+  public static <R> Closure<R> method(Method method, Expr<?>... args) {
     try {
       MethodHandle mh = MethodHandles.publicLookup().unreflect(method);
-      return new Closure<>(mh, args);
+      return Closure.fold(mh, args);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public static <R> Closure<R> constructor(Constructor<R> constructor, Var<?>... args) {
+  public static <R> Closure<R> constructor(Constructor<R> constructor, Expr<?>... args) {
     try {
       MethodHandle mh = MethodHandles.publicLookup().unreflectConstructor(constructor);
-      return new Closure<>(mh, args);
+      return Closure.fold(mh, args);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public static <R> Closure<R> getField(Field field, Var<?> object) {
+  public static <R> Closure<R> getField(Field field, Expr<?> object) {
     try {
       MethodHandle mh = MethodHandles.publicLookup().unreflectGetter(field);
-      return new Closure<>(mh, object);
+      return Closure.fold(mh, object);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public static Closure<Void> setField(Field field, Var<?> object, Var<?> value) {
+  public static Closure<Void> setField(Field field, Expr<?> object, Expr<?> value) {
     try {
       MethodHandle mh = MethodHandles.publicLookup().unreflectSetter(field);
-      return new Closure<>(mh, object, value);
+      return Closure.fold(mh, object, value);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
   }
 
-  public static <AA, A> Closure<A> getArrayElement(Var<AA> array, Var<Integer> index) {
+  public static <AA, A> Closure<A> getArrayElement(Expr<AA> array, Expr<Integer> index) {
     MethodHandle mh = MethodHandles.arrayElementGetter(array.type());
-    return new Closure<>(mh, array, index);
+    return Closure.fold(mh, array, index);
   }
 
-  public static <AA, A> Closure<Void> setArrayElement(Var<AA> array, Var<Integer> index, Var<A> value) {
+  public static <AA, A> Closure<Void> setArrayElement(Expr<AA> array, Expr<Integer> index, Expr<A> value) {
     MethodHandle mh = MethodHandles.arrayElementSetter(array.type());
-    return new Closure<>(mh, array, index, value);
+    return Closure.fold(mh, array, index, value);
   }
 
-  public static <A, R> Closure<R> function(Class<R> r, Var<A> a, Function<A, R> f) {
+  public static <A, R> Closure<R> function(Class<R> r, Expr<A> a, Function<A, R> f) {
     MethodHandle mh = FunctionsMh.function(f);
     mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(r, a.type()));
-    return new Closure<R>(mh, a);
+    return Closure.fold(mh, a);
   }
 
   public static <A, B, R> Closure<R> biFunction(
-      Class<R> r, Var<A> a, Var<B> b, BiFunction<A, B, R> function) {
-    MethodHandle mh = FunctionsMh.biFunctionApply(function);
+      Class<R> r, Expr<A> a, Expr<B> b, BiFunction<A, B, R> function) {
+    MethodHandle mh = FunctionsMh.biFunction(function);
     mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(r, a.type(), b.type()));
-    return new Closure<>(mh, a, b);
+    return Closure.fold(mh, a, b);
   }
 
-  public static <A> Closure<Boolean> predicate(Var<A> a, Predicate<A> predicate) {
+  public static <A> Closure<Boolean> predicate(Expr<A> a, Predicate<A> predicate) {
     MethodHandle mh = FunctionsMh.predicate(predicate);
     mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(boolean.class, a.type()));
-    return new Closure<>(mh, a);
+    return Closure.fold(mh, a);
   }
 
   public static <A, B> Closure<Boolean> biPredicate(
-      Var<A> a, Var<B> b, BiPredicate<A, B> predicate) {
+      Expr<A> a, Expr<B> b, BiPredicate<A, B> predicate) {
     MethodHandle mh = FunctionsMh.biPredicateTest(predicate);
     mh =
         MethodHandles.explicitCastArguments(
             mh, MethodType.methodType(boolean.class, a.type(), b.type()));
-    return new Closure<>(mh, a, b);
+    return Closure.fold(mh, a, b);
   }
 
   public static Closure<Void> runnable(Runnable runnable) {
@@ -161,9 +229,9 @@ public class Closure<R> {
     return new Closure<>(mh);
   }
 
-  public static Closure<Integer> intUnaryOperator(Var<Integer> a, IntUnaryOperator f) {
+  public static Closure<Integer> intUnaryOperator(Expr<Integer> a, IntUnaryOperator f) {
     MethodHandle mh = FunctionsMh.intUnaryOperator(f);
-    return new Closure<>(mh, a);
+    return Closure.fold(mh, a);
   }
 
   public static Closure<Boolean> intPredicate(Var<Integer> a, IntPredicate f) {
@@ -171,8 +239,8 @@ public class Closure<R> {
     return new Closure<>(mh, a);
   }
 
-  public static <R> Closure<R> ifThenElse(Var<Boolean> cond, Closure<R> thenCl, Closure<R> elseCl) {
-    Preconditions.checkArgument(thenCl.returnType() == elseCl.returnType());
+  public static <R> Closure<R> ifThenElse(Expr<Boolean> cond, Closure<R> thenCl, Closure<R> elseCl) {
+    Preconditions.checkArgument(thenCl.type() == elseCl.type());
 
     MethodHandle thenUnifMh =
         MethodHandles.dropArguments(
@@ -186,20 +254,20 @@ public class Closure<R> {
     MethodHandle mh =
         MethodHandles.guardWithTest(
             MethodHandles.identity(boolean.class), thenWithBMh, elseWithBMh);
-    return new Closure<>(
+    return Closure.fold(
         mh,
         ArrayUtil.concat(
-            new Var<?>[] {cond},
+            new Expr<?>[] {cond},
             thenCl.args.toArray(Var<?>[]::new),
             elseCl.args.toArray(Var<?>[]::new)));
   }
 
-  public static <R> Closure<R> ifThenElse(Var<Boolean> cond, Var<R> thenVal, Var<R> elseVal) {
+  public static <R> Closure<R> ifThenElse(Expr<Boolean> cond, Var<R> thenVal, Var<R> elseVal) {
     Preconditions.checkArgument(thenVal.type().equals(elseVal.type()));
     return Closure.ifThenElse(cond, Closure.var(thenVal), Closure.var(elseVal));
   }
 
-  public static Closure<Void> ifThen(Var<Boolean> cond, Closure<?> thenCl) {
+  public static Closure<Void> ifThen(Expr<Boolean> cond, Closure<?> thenCl) {
     return ifThenElse(cond, thenCl.cast(void.class), constantVoid());
   }
 
@@ -269,7 +337,7 @@ public class Closure<R> {
 
   public static <R> Closure<R> whileLoop(
       Closure<R> init, Function<Var<R>, Closure<Boolean>> pred, Function<Var<R>, Closure<R>> body) {
-    Class<R> vt = init.returnType();
+    Class<R> vt = init.type();
 
     VarUpdate<Boolean> predU = varUpdate(vt, pred);
     VarUpdate<R> bodyU = varUpdate(vt, body);
@@ -292,7 +360,7 @@ public class Closure<R> {
       Closure<Integer> end,
       Closure<R> init,
       BiFunction<Var<R>, Var<Integer>, Closure<R>> body) {
-    Class<R> vt = init.returnType();
+    Class<R> vt = init.type();
 
     VarUpdate<R> bodyU = varUpdate(vt, int.class, body);
 
@@ -307,5 +375,10 @@ public class Closure<R> {
     MethodHandle mh = MethodHandles.countedLoop(startFull.mh, endFull.mh, initFull.mh, bodyFull.mh);
 
     return new Closure<>(mh, sigUnifier.allVars);
+  }
+
+  @Override
+  public String toString() {
+    return args + " -> " + mh.type().returnType().getSimpleName();
   }
 }

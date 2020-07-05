@@ -48,7 +48,7 @@ class SigUnifier {
         MethodHandles.permuteArguments(
             closure.mh,
             MethodType.methodType(
-                    closure.returnType(), allVars.stream().map(Var::type).toArray(Class<?>[]::new))
+                    closure.type(), allVars.stream().map(Var::type).toArray(Class<?>[]::new))
                 .insertParameterTypes(0, Arrays.copyOf(closure.mh.type().parameterArray(), count)),
             reorder);
 

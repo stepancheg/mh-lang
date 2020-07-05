@@ -119,9 +119,9 @@ public class FlatArrayMhList<T> extends AbstractList<T> {
       for (int fi = 0; fi < fields.length; fi++) {
         Field field = fields[fi];
         Class<?> fieldArrayType = fieldArrayType(field);
-        Var<Integer> iv = b.assign(Closure.constant(int.class, fi));
-        Var<?> fieldArray = b.assign(Closure.getArrayElement(pArrays, iv).cast(fieldArrayType));
-        Var<?> fieldValue = b.assign(Closure.getArrayElement(fieldArray, pI).cast(field.getType()));
+        Closure<Integer> iv = Closure.constant(int.class, fi);
+        Closure<?> fieldArray = Closure.getArrayElement(pArrays, iv).cast(fieldArrayType);
+        Closure<?> fieldValue = Closure.getArrayElement(fieldArray, pI).cast(field.getType());
         b.assign(Closure.setField(field, instance, fieldValue));
       }
       return b.buildReturn(instanceObject);
@@ -138,9 +138,9 @@ public class FlatArrayMhList<T> extends AbstractList<T> {
         Field field = fields[fi];
         Class<?> fieldArrayType = fieldArrayType(field);
         Class<?> fieldArrayComponentType = fieldArrayComponentType(field);
-        Var<Integer> iv = b.assign(Closure.constant(int.class, fi));
-        Var<?> fieldArray = b.assign(Closure.getArrayElement(pArrays, iv).cast(fieldArrayType));
-        Var<?> fieldValue = b.assign(Closure.getField(field, pInstanceTyped).cast(fieldArrayComponentType));
+        Closure<Integer> iv = Closure.constant(int.class, fi);
+        Closure<?> fieldArray = Closure.getArrayElement(pArrays, iv).cast(fieldArrayType);
+        Closure<?> fieldValue = Closure.getField(field, pInstanceTyped).cast(fieldArrayComponentType);
         b.assign(Closure.setArrayElement(fieldArray, pI, fieldValue));
       }
       return b.buildReturnVoid();
@@ -154,15 +154,15 @@ public class FlatArrayMhList<T> extends AbstractList<T> {
         Field field = fields[fi];
         Class<?> fieldArrayType = fieldArrayType(field);
 
-        Var<Integer> iv = b.assign(Closure.constant(int.class, fi));
-        Var<?> fieldArray = b.assign(Closure.getArrayElement(pArrays, iv).cast(fieldArrayType));
+        Closure<Integer> iv = Closure.constant(int.class, fi);
+        Closure<?> fieldArray = Closure.getArrayElement(pArrays, iv).cast(fieldArrayType);
         MethodHandle copyOfMh;
         try {
           copyOfMh = MethodHandles.publicLookup().findStatic(Arrays.class, "copyOf", MethodType.methodType(fieldArrayType, fieldArrayType, int.class));
         } catch (NoSuchMethodException | IllegalAccessException e) {
           throw new RuntimeException(e);
         }
-        Var<?> fieldArrayResized = b.assign(new Closure<>(copyOfMh, fieldArray, pNewSize).cast(Object.class));
+        Closure<?> fieldArrayResized = Closure.fold(copyOfMh, fieldArray, pNewSize).cast(Object.class);
         b.assign(Closure.setArrayElement(pArrays, iv, fieldArrayResized));
       }
       return b.buildReturnVoid();
