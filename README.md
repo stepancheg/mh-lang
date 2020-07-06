@@ -1,6 +1,4 @@
-# mh-lang
-
-DSL for constructing Java MethodHandles.
+# mh-lang: DSL for constructing Java MethodHandles
 
 Reflection is great, but slow. Single reflection operation can be fast, but when invoking a sequence of operations,
 a user has to pay for reflective invocation overhead in each operation, which is:
@@ -21,7 +19,7 @@ void checkAllNotNull(T t) {
 }
 ```
 
-`Field.get` is invoked multiple times, each time it performs type check.
+`Field.get` is invoked multiple times, each time it performs a type check.
 
 Java `MethodHandle`s allow glueing multiple reflective operation together.
 Each reflective operation (field get/set, method call, constructor) is a `MethodHandle`,
@@ -44,8 +42,8 @@ The question is how to construct resulting `MethodHandle`. Raw combine operation
 are very hard in my experience, and writing stateful code
 
 * when a computation result need to be used in multiple operations
-* with proper order of side effects
-* with conditional invocations
+* with the order of operations is important
+* with runtime-conditional invocations
 
 is very hard to a regular human.
 
