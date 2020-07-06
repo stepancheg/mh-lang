@@ -473,6 +473,21 @@ public class Closure<R> extends Expr<R> {
     return Closure.fold(MethodHandles.throwException(returnType, exception.type()), exception);
   }
 
+  /** Wrap {@link MethodHandles#catchException(MethodHandle, Class, MethodHandle)}. */
+  public static <R, E extends Throwable> Closure<R> catchException(
+      Closure<R> body, Class<E> exType, Function<Var<E>, Closure<R>> catchBlock) {
+    VarUpdate<R> catchBlockU = varUpdate(exType, catchBlock);
+
+    SigUnifier sigUnifier = new SigUnifier(body.args, catchBlockU.argsWithoutParam());
+
+    Closure<R> bodyFull = sigUnifier.unify(body);
+    Closure<R> catchFull = sigUnifier.unifyWithoutFirst(catchBlockU.closure, 1);
+
+    MethodHandle mh = MethodHandles.catchException(bodyFull.mh, exType, catchFull.mh);
+
+    return new Closure<>(mh, sigUnifier.allVars);
+  }
+
   /** {@code cond ? thenExpr() : elseExpr()}. */
   public static <R> Closure<R> ifThenElse(Expr<Boolean> cond, Expr<R> thenExpr, Expr<R> elseExpr) {
     Closure<R> thenCl = thenExpr.asClosure();

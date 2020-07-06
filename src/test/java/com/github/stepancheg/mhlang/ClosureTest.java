@@ -166,6 +166,30 @@ public class ClosureTest {
   }
 
   @Test
+  public void catchException() throws Throwable {
+    MethodHandle mh =
+        MhBuilder.shortcut(
+            boolean.class,
+            p -> {
+              return Closure.catchException(
+                  Closure.ifThenElse(
+                      p,
+                      Closure.throwException(
+                          String.class,
+                          Closure.supplier(Exception.class, () -> new RuntimeException("x"))),
+                      Closure.constant("no")),
+                  Exception.class,
+                  e ->
+                      Closure.plus(
+                          Closure.constant("caught: "),
+                          Closure.function(String.class, e, Throwable::getMessage)));
+            });
+
+    assertEquals("caught: x", (String) mh.invokeExact(true));
+    assertEquals("no", (String) mh.invokeExact(false));
+  }
+
+  @Test
   public void countedLoop() throws Throwable {
     MhBuilder b = new MhBuilder();
     Var<Long> begin = b.addParam(long.class);
