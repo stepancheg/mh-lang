@@ -20,10 +20,14 @@ public class ToString {
     }
 
     try {
-      return Closure.fold(MethodHandles.publicLookup().findVirtual(
-        StringBuilder.class,
-        "append",
-        MethodType.methodType(StringBuilder.class, value.type())), sb, value);
+      return Closure.fold(
+          MethodHandles.publicLookup()
+              .findVirtual(
+                  StringBuilder.class,
+                  "append",
+                  MethodType.methodType(StringBuilder.class, value.type())),
+          sb,
+          value);
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new RuntimeException(e);
     }
@@ -35,7 +39,10 @@ public class ToString {
     } else {
       MhBuilder b = new MhBuilder();
       Var<T> t = b.addParam(clazz);
-      Var<StringBuilder> sb = b.assign(Closure.supplier(StringBuilder.class, () -> new StringBuilder(clazz.getSimpleName() + "{")));
+      Var<StringBuilder> sb =
+          b.assign(
+              Closure.newInstance(
+                  StringBuilder.class, Closure.constant(clazz.getSimpleName() + "{")));
       Field[] declaredFields = clazz.getDeclaredFields();
       for (int i = 0; i < declaredFields.length; i++) {
         Field field = declaredFields[i];
@@ -44,10 +51,9 @@ public class ToString {
           continue;
         }
 
-        if (i != 0) {
-          b.assign(append(sb, Closure.constant(", ")));
-        }
-        b.assign(append(sb, Closure.constant(field.getName() + "=")));
+        String comma = i != 0 ? ", " : "";
+        b.assign(append(sb, Closure.constant(comma + field.getName() + "=")));
+
         Closure<Object> fieldValue = Closure.getField(field, t, lookup);
         b.assign(append(sb, fieldValue));
       }
@@ -55,5 +61,4 @@ public class ToString {
       return b.buildReturn(Closure.toString(sb));
     }
   }
-
 }

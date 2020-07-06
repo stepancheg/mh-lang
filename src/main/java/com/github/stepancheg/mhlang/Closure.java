@@ -267,13 +267,34 @@ public class Closure<R> extends Expr<R> {
 
   /** Wrapper for {@link MethodHandles.Lookup#unreflectConstructor(Constructor)}. */
   public static <R> Closure<R> constructor(
-      Constructor<R> constructor, MethodHandles.Lookup lookup, Expr<?>[] args) {
+      Constructor<R> constructor, MethodHandles.Lookup lookup, Expr<?>... args) {
     try {
       MethodHandle mh = lookup.unreflectConstructor(constructor);
       return Closure.fold(mh, args);
     } catch (IllegalAccessException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /** Shortcut for {@link #constructor(Constructor, MethodHandles.Lookup, Expr[])}. */
+  public static <R> Closure<R> newInstance(
+      Class<R> clazz, MethodHandles.Lookup lookup, Expr<?>... args) {
+    try {
+      Constructor<R> constructor =
+          clazz.getDeclaredConstructor(
+              Arrays.stream(args).map(Expr::type).toArray(Class<?>[]::new));
+      return constructor(constructor, lookup, args);
+    } catch (NoSuchMethodException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * {@link #newInstance(Class, MethodHandles.Lookup, Expr[])} with {@link
+   * MethodHandles#publicLookup()}.
+   */
+  public static <R> Closure<R> newInstance(Class<R> clazz, Expr<?>... args) {
+    return newInstance(clazz, MethodHandles.publicLookup(), args);
   }
 
   /**
