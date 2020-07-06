@@ -77,6 +77,10 @@ class MhUtil {
     }
   }
 
+  private static boolean eq(boolean a, boolean b) {
+    return a == b;
+  }
+
   private static boolean eq(byte a, byte b) {
     return a == b;
   }
