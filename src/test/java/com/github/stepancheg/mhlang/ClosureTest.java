@@ -279,6 +279,13 @@ public class ClosureTest {
   }
 
   @Test
+  public void newArray() throws Throwable {
+    MethodHandle mh = MhBuilder.shortcut(int.class, p -> Closure.newArray(long[].class, p));
+    long[] aa = (long[]) mh.invokeExact(2);
+    assertArrayEquals(new long[2], aa);
+  }
+
+  @Test
   public void fold() throws Throwable {
     Closure<Object> cl =
         Closure.fold(

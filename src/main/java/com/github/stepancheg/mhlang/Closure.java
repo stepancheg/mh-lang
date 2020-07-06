@@ -331,6 +331,12 @@ public class Closure<R> extends Expr<R> {
     return Closure.fold(mh, array, index, value);
   }
 
+  /** Wrapper for {@link MethodHandles#arrayConstructor(Class)}. */
+  public static <AA> Closure<AA> newArray(Class<AA> arrayType, Expr<Integer> size) {
+    MethodHandle mh = MethodHandles.arrayConstructor(arrayType);
+    return Closure.fold(mh, size);
+  }
+
   /** Make a closure from given function. */
   public static <A, R> Closure<R> function(Class<R> r, Expr<A> a, Function<A, R> f) {
     MethodHandle mh = FunctionsMh.function(f);
