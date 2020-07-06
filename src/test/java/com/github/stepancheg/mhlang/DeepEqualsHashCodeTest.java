@@ -18,8 +18,8 @@ public class DeepEqualsHashCodeTest {
       this.s = s;
     }
 
-    private static final MethodHandle EQUALS = DeepEqualsHashCode.buildEquals(Data.class, MethodHandles.lookup());
-    private static final MethodHandle HASH_CODE = DeepEqualsHashCode.buildHashCode(Data.class, MethodHandles.lookup());
+    private static final MethodHandle EQUALS = DeepEqualsHashCode.deepEquals(Data.class, MethodHandles.lookup());
+    private static final MethodHandle HASH_CODE = DeepEqualsHashCode.deepHashCode(Data.class, MethodHandles.lookup());
 
     @Override
     public boolean equals(Object obj) {

@@ -28,9 +28,9 @@ public class EqualsHashCodeToStringExample {
     }
 
     private static final MethodHandle EQUALS =
-        DeepEqualsHashCode.buildEquals(MyData.class, MethodHandles.lookup());
+        DeepEqualsHashCode.deepEquals(MyData.class, MethodHandles.lookup());
     private static final MethodHandle HASH_CODE =
-        DeepEqualsHashCode.buildHashCode(MyData.class, MethodHandles.lookup());
+        DeepEqualsHashCode.deepHashCode(MyData.class, MethodHandles.lookup());
     private static final MethodHandle TO_STRING =
         DeepToString.buildToString(MyData.class, MethodHandles.lookup());
 

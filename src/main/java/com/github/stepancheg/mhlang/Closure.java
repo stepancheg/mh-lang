@@ -11,7 +11,6 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.Stream;
@@ -341,7 +340,7 @@ public class Closure<R> extends Expr<R> {
   /** Wrapper for {@link MethodHandles.Lookup#unreflectGetter(java.lang.reflect.Field)}. */
   public static <R> Closure<R> getField(Field field, Expr<?> object, MethodHandles.Lookup lookup) {
     Preconditions.checkArgument(
-        (field.getModifiers() & Modifier.STATIC) == 0, "field should not be static: %s", field);
+        ClassUtil.isNotStatic(field), "field should not be static: %s", field);
     try {
       MethodHandle mh = lookup.unreflectGetter(field);
       return Closure.fold(mh, object);
@@ -363,7 +362,7 @@ public class Closure<R> extends Expr<R> {
   public static Closure<Void> setField(
       Field field, Expr<?> object, Expr<?> value, MethodHandles.Lookup lookup) {
     Preconditions.checkArgument(
-        (field.getModifiers() & Modifier.STATIC) == 0, "field should not be static: %s", field);
+        ClassUtil.isNotStatic(field), "field should not be static: %s", field);
     try {
       MethodHandle mh = lookup.unreflectSetter(field);
       return Closure.fold(mh, object, value);

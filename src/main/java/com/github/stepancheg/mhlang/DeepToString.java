@@ -43,13 +43,9 @@ public class DeepToString {
           b.assign(
               Closure.newInstance(
                   StringBuilder.class, Closure.constant(clazz.getSimpleName() + "{")));
-      Field[] declaredFields = clazz.getDeclaredFields();
+      Field[] declaredFields = ClassUtil.nonStaticDeclaredFields(clazz);
       for (int i = 0; i < declaredFields.length; i++) {
         Field field = declaredFields[i];
-
-        if ((field.getModifiers() & Modifier.STATIC) != 0) {
-          continue;
-        }
 
         String comma = i != 0 ? ", " : "";
         b.assign(append(sb, Closure.constant(comma + field.getName() + "=")));
