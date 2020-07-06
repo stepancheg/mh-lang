@@ -1,12 +1,15 @@
 package com.github.stepancheg.mhlang;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.reflect.TypeToken;
 import org.junit.Test;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -183,6 +186,32 @@ public class ClosureTest {
                         })));
     String r = (String) mh.invokeExact(3L, 7L);
     assertEquals("3 4 5 6", r);
+  }
+
+  @Test
+  public void iteratorLoop() throws Throwable {
+    MhBuilder b = new MhBuilder();
+    Var<List<Integer>> p = b.addParam(new TypeToken<List<Integer>>() {});
+    MethodHandle mh =
+        b.buildReturn(
+            Closure.iteratorLoop(
+                int.class,
+                Closure.function(Iterator.class, p, List::iterator)
+                    .cast(new TypeToken<Iterator<Integer>>() {}),
+                Closure.constant(0),
+                Closure::plus));
+
+    assertEquals(10, (int) mh.invokeExact((List) ImmutableList.of(1, 2, 3, 4)));
+  }
+
+  @Test
+  public void iterableLoop() throws Throwable {
+    MhBuilder b = new MhBuilder();
+    Var<List<Integer>> p = b.addParam(new TypeToken<List<Integer>>() {});
+    MethodHandle mh =
+        b.buildReturn(Closure.iterableLoop(int.class, p, Closure.constant(0), Closure::plus));
+
+    assertEquals(10, (int) mh.invokeExact((List) ImmutableList.of(1, 2, 3, 4)));
   }
 
   @Test

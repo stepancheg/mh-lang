@@ -3,6 +3,7 @@ package com.github.stepancheg.mhlang;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.reflect.TypeToken;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -12,6 +13,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.*;
@@ -142,14 +144,25 @@ public class Closure<R> extends Expr<R> {
     }
   }
 
+  /**
+   * Dynamically cast return value to a {@link TypeToken#getRawType()} of given type.
+   *
+   * <p>This operation is a wrapper to {@link MethodHandles#explicitCastArguments(MethodHandle,
+   * MethodType)}.
+   */
+  @SuppressWarnings("unchecked")
+  public <S> Closure<S> cast(TypeToken<S> type) {
+    return (Closure<S>) cast(type.getRawType());
+  }
+
   /** Shortcut for {@link MethodHandles#filterReturnValue(MethodHandle, MethodHandle)}. */
   public <S> Closure<S> filterReturnValue(MethodHandle filter) {
     Preconditions.checkArgument(
         filter.type().parameterCount() == 1, "filter mh must have single arg: %s", filter);
     Preconditions.checkArgument(
         filter.type().parameterType(0) == mh.type().returnType(),
-        "filter mh %s parameter must match this return %s",
-        mh,
+        "filter %s parameter 0 must match this return %s",
+        filter,
         this);
     return new Closure<>(MethodHandles.filterReturnValue(this.mh, filter), args);
   }
@@ -691,6 +704,79 @@ public class Closure<R> extends Expr<R> {
     MethodHandle mh = MethodHandles.countedLoop(startFull.mh, endFull.mh, initFull.mh, bodyFull.mh);
 
     return new Closure<>(mh, sigUnifier.allVars);
+  }
+
+  /**
+   * Iterator loop.
+   *
+   * <pre>
+   *     i = iterator(...)
+   *     v = init(...)
+   *     while (i.hasNext()) {
+   *         t = i.next();
+   *         v = body(v, t, ...);
+   *     }
+   *     return v;
+   * </pre>
+   *
+   * Note {@link ClosureBuilder} can be used to build a closure.
+   */
+  public static <T, V> Closure<V> iteratorLoop(
+      Class<T> tt,
+      Closure<Iterator<T>> iterator,
+      Closure<V> init,
+      BiFunction<Var<V>, Var<T>, Closure<V>> body) {
+    Class<V> vt = init.type();
+
+    VarUpdate<V> bodyU = varUpdate(vt, tt, body);
+
+    SigUnifier sigUnifier = new SigUnifier(iterator.args, init.args, bodyU.argsWithoutParam());
+
+    Closure<Iterator<T>> iteratorFull = sigUnifier.unify(iterator);
+    Closure<V> initFull = sigUnifier.unify(init);
+    Closure<V> bodyFull = sigUnifier.unifyWithoutFirst(bodyU.closure, 2);
+
+    MethodHandle mh = MethodHandles.iteratedLoop(iteratorFull.mh, initFull.mh, bodyFull.mh);
+
+    return new Closure<>(mh, sigUnifier.allVars);
+  }
+
+  private static final MethodHandle ITERABLE_ITERATOR;
+
+  static {
+    try {
+      ITERABLE_ITERATOR =
+          MethodHandles.publicLookup()
+              .findVirtual(Iterable.class, "iterator", MethodType.methodType(Iterator.class));
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Iterator loop.
+   *
+   * <pre>
+   *     i = iteratble(...).iterator()
+   *     v = init(...)
+   *     while (i.hasNext()) {
+   *         t = i.next();
+   *         v = body(v, t, ...);
+   *     }
+   *     return v;
+   * </pre>
+   *
+   * Note {@link ClosureBuilder} can be used to build a closure.
+   */
+  public static <T, V, C extends Iterable<T>> Closure<V> iterableLoop(
+      Class<T> tt, Expr<C> iterable, Closure<V> init, BiFunction<Var<V>, Var<T>, Closure<V>> body) {
+    Preconditions.checkArgument(Iterable.class.isAssignableFrom(iterable.type()));
+
+    return iteratorLoop(
+        tt,
+        iterable.asClosure().cast(Iterable.class).filterReturnValue(ITERABLE_ITERATOR),
+        init,
+        body);
   }
 
   @Override

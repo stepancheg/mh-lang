@@ -2,6 +2,7 @@ package com.github.stepancheg.mhlang;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.reflect.TypeToken;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
@@ -42,6 +43,11 @@ public class MhBuilder extends Builder {
     Var.Param<T> param = new Var.Param<>(functionId, params.size(), type);
     params.add(param);
     return param;
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T> Var<T> addParam(TypeToken<T> type) {
+    return (Var<T>) addParam(type.getRawType());
   }
 
   /** {@inheritDoc} */
