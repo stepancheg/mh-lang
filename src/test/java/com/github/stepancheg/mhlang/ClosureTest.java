@@ -155,8 +155,8 @@ public class ClosureTest {
     MethodHandle mh =
         b.buildReturn(
             Closure.countedLoop(
-                begin.cast(int.class),
-                end.cast(int.class),
+                begin.asClosure().cast(int.class),
+                end.asClosure().cast(int.class),
                 Closure.constant(String.class, ""),
                 (vv, vi) ->
                     Closure.biFunction(
@@ -174,7 +174,7 @@ public class ClosureTest {
   public void castBox() throws Throwable {
     MhBuilder b = new MhBuilder();
     Var<Integer> p = b.addParam(int.class);
-    MethodHandle mh = b.buildReturn(p.cast(Integer.class));
+    MethodHandle mh = b.buildReturn(p.asClosure().cast(Integer.class));
 
     Integer i = (Integer) mh.invokeExact(17);
     assertEquals(17, i.intValue());
@@ -184,7 +184,7 @@ public class ClosureTest {
   public void castUnbox() throws Throwable {
     MhBuilder b = new MhBuilder();
     Var<Integer> p = b.addParam(Integer.class);
-    MethodHandle mh = b.buildReturn(p.cast(Integer.class));
+    MethodHandle mh = b.buildReturn(p.asClosure().cast(Integer.class));
 
     Integer pi = 17;
     int i = (Integer) mh.invokeExact(pi);

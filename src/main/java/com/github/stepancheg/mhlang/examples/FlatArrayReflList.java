@@ -17,8 +17,11 @@ public class FlatArrayReflList<T> extends AbstractList<T> {
 
   private final Factory<T> factory;
 
+  /** Array of arrays. */
   private Object[] fields;
+  /** Current size. */
   private int size = 0;
+  /** Current capacity. */
   private int capacity = 0;
 
   private FlatArrayReflList(Factory<T> factory, Object[] fields) {

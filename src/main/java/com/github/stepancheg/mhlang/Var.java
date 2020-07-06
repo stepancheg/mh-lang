@@ -1,5 +1,13 @@
 package com.github.stepancheg.mhlang;
 
+/**
+ * A variable, which is either a function parameter or a function local variable.
+ *
+ * <p>This cannot be constructed directly.
+ *
+ * <p>Function parameters are created with {@link MhBuilder#addParam(Class)}. Local variables are
+ * created with {@link Builder#assign(Closure)}.
+ */
 public abstract class Var<R> extends Expr<R> {
   final long functionId;
 
@@ -13,10 +21,6 @@ public abstract class Var<R> extends Expr<R> {
   @Override
   public Closure<R> asClosure() {
     return Closure.var(this);
-  }
-
-  public <S> Closure<S> cast(Class<S> clazz) {
-    return asClosure().cast(clazz);
   }
 
   static class Param<T> extends Var<T> {

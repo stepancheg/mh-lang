@@ -8,15 +8,16 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 
+/** Common builder for {@link MhBuilder} and {@link ClosureBuilder}. */
 public abstract class Builder {
 
-  protected final long functionId = FunctionId.nextId();
+  final long functionId = FunctionId.nextId();
 
-  protected abstract ImmutableList<Var<?>> paramsOrOuterVars();
+  abstract ImmutableList<Var<?>> paramsOrOuterVars();
 
   private ArrayList<Var.Invoke<?>> assignments = new ArrayList<>();
 
-  public Builder() {}
+  Builder() {}
 
   private ArrayList<Var.Invoke<?>> nonVoidAssignments = new ArrayList<>();
 
@@ -33,12 +34,11 @@ public abstract class Builder {
               ? ArrayUtil.concat(localVarsWithout, new Class<?>[] {assignment.type()})
               : localVarsWithout;
     }
-
   }
 
   private ArrayList<Step> steps = new ArrayList<>();
 
-  protected boolean bodyStarted() {
+  boolean bodyStarted() {
     return !assignments.isEmpty();
   }
 
@@ -51,8 +51,28 @@ public abstract class Builder {
     }
   }
 
-  protected abstract void addOuterVar(Var<?> outerVar);
+  abstract void addOuterVar(Var<?> outerVar);
 
+  /**
+   * Add a statement to the current function or closure.
+   *
+   * <p>This functions returns {@link Var} object which can be referenced later. Note that if a
+   * closure is used twice in different expressions, it will be evaluated twice, but a variable will
+   * be evaluated once. Cf.
+   *
+   * <pre>
+   *     c = { println("hello"; return 1; };
+   *
+   *     // this will print "hello" twice:
+   *     builder.assign(c + c);
+   *
+   *     // this will print "hello" once
+   *     v = builder.assign(c);
+   *     builder.assign(v + v);
+   * </pre>
+   *
+   * Note {@code void}-returning closures should be registered as statements for side effects.
+   */
   public <R> Var<R> assign(Closure<R> closure) {
     for (Var<?> arg : closure.args) {
       if (arg.functionId != functionId) {
@@ -98,8 +118,12 @@ public abstract class Builder {
             next,
             next.type().parameterCount() - (mh.type().returnType() != void.class ? 1 : 0),
             mh);
-    MethodType resultType = MethodType.methodType(mh.type().returnType(),
-      ArrayUtil.concat(paramsOrOuterVars().stream().map(Var::type).toArray(Class<?>[]::new), step.localVarsWithout));
+    MethodType resultType =
+        MethodType.methodType(
+            mh.type().returnType(),
+            ArrayUtil.concat(
+                paramsOrOuterVars().stream().map(Var::type).toArray(Class<?>[]::new),
+                step.localVarsWithout));
     int[] reorder = new int[mh.type().parameterCount()];
     for (int i = 0; i != reorder.length; ++i) {
       if (i < resultType.parameterCount()) {
@@ -112,7 +136,7 @@ public abstract class Builder {
     return MethodHandles.permuteArguments(mh, resultType, reorder);
   }
 
-  protected <R> Closure<R> buildReturnImpl(Var<R> returnValue) {
+  <R> Closure<R> buildReturnImpl(Var<R> returnValue) {
     MethodHandle mh;
     if (returnValue.type() != void.class) {
       mh = MhUtil.returnParam(currentParams(), varIndex(returnValue));

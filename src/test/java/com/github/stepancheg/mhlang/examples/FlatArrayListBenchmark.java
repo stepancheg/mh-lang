@@ -2,7 +2,7 @@ package com.github.stepancheg.mhlang.examples;
 
 import java.util.List;
 
-public class Benchmark {
+public class FlatArrayListBenchmark {
 
   private static volatile Object o;
 
