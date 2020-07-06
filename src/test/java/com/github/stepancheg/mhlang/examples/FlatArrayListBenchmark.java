@@ -1,14 +1,16 @@
 package com.github.stepancheg.mhlang.examples;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 public class FlatArrayListBenchmark {
 
   private static volatile Object o;
 
-  private static void run(String name, List<MyData> list) {
+  private static void run(String name, Supplier<List<MyData>> listFactory) {
     long start = System.currentTimeMillis();
     for (int j = 0; j != 1000; ++j) {
+      List<MyData> list = listFactory.get();
       for (int i = 0; i != 10000; ++i) {
         list.add(new MyData(i, "", true, i + 1));
       }
@@ -21,12 +23,12 @@ public class FlatArrayListBenchmark {
   private static final FlatArrayReflList.Factory<MyData> reflFactory = new FlatArrayReflList.Factory<>(MyData.class);
 
   private static void iter() {
-    run("mh", mhFactory.newArrayList());
-    run("refl", reflFactory.newArrayList());
-    run("refl", reflFactory.newArrayList());
-    run("mh", mhFactory.newArrayList());
-    run("mh", mhFactory.newArrayList());
-    run("refl", reflFactory.newArrayList());
+    run("mh", mhFactory::newArrayList);
+    run("refl", reflFactory::newArrayList);
+    run("refl", reflFactory::newArrayList);
+    run("mh", mhFactory::newArrayList);
+    run("mh", mhFactory::newArrayList);
+    run("refl", reflFactory::newArrayList);
   }
 
   public static void main(String[] args) {
