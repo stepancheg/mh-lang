@@ -41,8 +41,13 @@ void checkAllNotNull(T t) {
 ```
 
 The question is how to construct resulting `MethodHandle`. Raw combine operations (e. g. `collectArguments`)
-are very hard in my experience, and writing stateful code (e. g. when a computation result need to be used
-in multiple operations) is very hard to regular human.
+are very hard in my experience, and writing stateful code
+
+* when a computation result need to be used in multiple operations
+* with proper order of side effects
+* with conditional invocations
+
+is very hard to a regular human.
 
 mh-lang library provides a DSL for writing method handles in a friendly semi-functional style.
 
