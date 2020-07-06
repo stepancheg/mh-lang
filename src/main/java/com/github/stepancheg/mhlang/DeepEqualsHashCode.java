@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 /** Generate deep {@code equals} and {@code hashCode} for a given class. */
-public class EqualsHashCode {
+public class DeepEqualsHashCode {
   private static final MethodHandle GET_CLASS;
 
   static {

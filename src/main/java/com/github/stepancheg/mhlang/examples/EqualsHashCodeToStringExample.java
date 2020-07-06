@@ -1,7 +1,7 @@
 package com.github.stepancheg.mhlang.examples;
 
-import com.github.stepancheg.mhlang.EqualsHashCode;
-import com.github.stepancheg.mhlang.ToString;
+import com.github.stepancheg.mhlang.DeepEqualsHashCode;
+import com.github.stepancheg.mhlang.DeepToString;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -9,8 +9,8 @@ import java.lang.invoke.MethodHandles;
 /**
  * Example of hash code, equals, toString generators.
  *
- * <p>{@link EqualsHashCode} contains an implementation of deep equals and hash code. {@link
- * ToString} contains an implementation of deep equals.
+ * <p>{@link DeepEqualsHashCode} contains an implementation of deep equals and hash code. {@link
+ * DeepToString} contains an implementation of deep equals.
  *
  * <p>This example uses these utilities.
  */
@@ -28,11 +28,11 @@ public class EqualsHashCodeToStringExample {
     }
 
     private static final MethodHandle EQUALS =
-        EqualsHashCode.buildEquals(MyData.class, MethodHandles.lookup());
+        DeepEqualsHashCode.buildEquals(MyData.class, MethodHandles.lookup());
     private static final MethodHandle HASH_CODE =
-        EqualsHashCode.buildHashCode(MyData.class, MethodHandles.lookup());
+        DeepEqualsHashCode.buildHashCode(MyData.class, MethodHandles.lookup());
     private static final MethodHandle TO_STRING =
-        ToString.buildToString(MyData.class, MethodHandles.lookup());
+        DeepToString.buildToString(MyData.class, MethodHandles.lookup());
 
     @Override
     public int hashCode() {

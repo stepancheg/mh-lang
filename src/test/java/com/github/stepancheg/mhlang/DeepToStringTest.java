@@ -7,7 +7,7 @@ import java.lang.invoke.MethodHandles;
 
 import static org.junit.Assert.*;
 
-public class ToStringTest {
+public class DeepToStringTest {
 
   private static class MyData {
     private final int i;
@@ -18,7 +18,7 @@ public class ToStringTest {
       this.s = s;
     }
 
-    private static final MethodHandle TO_STRING = ToString.buildToString(MyData.class, MethodHandles.lookup());
+    private static final MethodHandle TO_STRING = DeepToString.buildToString(MyData.class, MethodHandles.lookup());
 
     @Override
     public String toString() {

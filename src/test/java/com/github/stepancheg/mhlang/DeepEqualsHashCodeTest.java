@@ -7,7 +7,7 @@ import java.lang.invoke.MethodHandles;
 
 import static org.junit.Assert.assertFalse;
 
-public class EqualsHashCodeTest {
+public class DeepEqualsHashCodeTest {
 
   private static class Data {
     private final int i;
@@ -18,8 +18,8 @@ public class EqualsHashCodeTest {
       this.s = s;
     }
 
-    private static final MethodHandle EQUALS = EqualsHashCode.buildEquals(Data.class, MethodHandles.lookup());
-    private static final MethodHandle HASH_CODE = EqualsHashCode.buildHashCode(Data.class, MethodHandles.lookup());
+    private static final MethodHandle EQUALS = DeepEqualsHashCode.buildEquals(Data.class, MethodHandles.lookup());
+    private static final MethodHandle HASH_CODE = DeepEqualsHashCode.buildHashCode(Data.class, MethodHandles.lookup());
 
     @Override
     public boolean equals(Object obj) {

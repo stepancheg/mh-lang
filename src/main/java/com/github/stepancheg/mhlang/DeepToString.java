@@ -6,7 +6,7 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-public class ToString {
+public class DeepToString {
 
   private static Closure<?> append(Expr<StringBuilder> sb, Expr<?> value) {
     if (value.type().isPrimitive()) {
