@@ -286,6 +286,11 @@ public class ClosureTest {
   }
 
   @Test
+  public void arrayLength() throws Throwable {
+    assertEquals(5, (int) Closure.arrayLength(Closure.constant(new double[5])).mh.invokeExact());
+  }
+
+  @Test
   public void fold() throws Throwable {
     Closure<Object> cl =
         Closure.fold(
