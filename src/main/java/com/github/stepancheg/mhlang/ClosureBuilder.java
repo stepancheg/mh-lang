@@ -39,6 +39,8 @@ public class ClosureBuilder extends Builder {
   @Override
   void addOuterVar(Var<?> outerVar) {
     Preconditions.checkState(outerVar.functionId != functionId);
-    outerVars.add(outerVar);
+    if (!outerVars.contains(outerVar)) {
+      outerVars.add(outerVar);
+    }
   }
 }
