@@ -117,7 +117,7 @@ public class Closure<R> extends Expr<R> {
 
   /** For a closure {@code c(...)} return a closure {@code !c(...)}. */
   public static Closure<Boolean> not(Closure<Boolean> expr) {
-    return expr.asClosure().filterReturnValue(MhUtil.NOT);
+    return expr.asClosure().filterReturnValueMh(MhUtil.NOT);
   }
 
   /**
@@ -132,7 +132,7 @@ public class Closure<R> extends Expr<R> {
       b.assign(asClosure());
       return b.buildReturn(constant(true));
     } else {
-      return asClosure().cast(Object.class).filterReturnValue(MhUtil.IS_NOT_NULL);
+      return asClosure().cast(Object.class).filterReturnValueMh(MhUtil.IS_NOT_NULL);
     }
   }
 
@@ -184,7 +184,7 @@ public class Closure<R> extends Expr<R> {
   }
 
   /** Shortcut for {@link MethodHandles#filterReturnValue(MethodHandle, MethodHandle)}. */
-  public <S> Closure<S> filterReturnValue(MethodHandle filter) {
+  public <S> Closure<S> filterReturnValueMh(MethodHandle filter) {
     Preconditions.checkArgument(
         filter.type().parameterCount() == 1, "filter mh must have single arg: %s", filter);
     Preconditions.checkArgument(
@@ -195,16 +195,21 @@ public class Closure<R> extends Expr<R> {
     return new Closure<>(MethodHandles.filterReturnValue(this.mh, filter), args);
   }
 
-  public <S> Closure<S> filterReturnValue(Function<R, S> f) {
-    return filterReturnValue(FunctionsMh.function(f));
+  public <S> Closure<S> filterReturnValue(Function<Var<R>, Closure<S>> filter) {
+    VarUpdate<S> filterU = varUpdate(type(), filter);
+    return filterReturnValueMh(filterU.closure.mh);
+  }
+
+  public <S> Closure<S> filterReturnValueFunction(Class<S> st, Function<R, S> f) {
+    return filterReturnValue(p -> function(st, p, f));
   }
 
   public Closure<Integer> filterReturnValueToInt(ToIntFunction<R> f) {
-    return filterReturnValue(FunctionsMh.toIntFunction(f));
+    return filterReturnValue(p -> toIntFunction(p, f));
   }
 
   public Closure<Boolean> filterReturnValueToBool(Predicate<R> f) {
-    return filterReturnValue(FunctionsMh.predicate(f));
+    return filterReturnValue(p -> predicate(p, f));
   }
 
   /** Variable as a {@link com.github.stepancheg.mhlang.Closure}. */
@@ -396,6 +401,13 @@ public class Closure<R> extends Expr<R> {
   public static <A, R> Closure<R> function(Class<R> r, Expr<A> a, Function<A, R> f) {
     MethodHandle mh = FunctionsMh.function(f);
     mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(r, a.type()));
+    return Closure.fold(mh, a);
+  }
+
+  /** Make a closure from given function. */
+  public static <A> Closure<Integer> toIntFunction(Expr<A> a, ToIntFunction<A> f) {
+    MethodHandle mh = FunctionsMh.toIntFunction(f);
+    mh = MethodHandles.explicitCastArguments(mh, MethodType.methodType(int.class, a.type()));
     return Closure.fold(mh, a);
   }
 
@@ -844,18 +856,6 @@ public class Closure<R> extends Expr<R> {
     return new Closure<>(mh, sigUnifier.allVars);
   }
 
-  private static final MethodHandle ITERABLE_ITERATOR;
-
-  static {
-    try {
-      ITERABLE_ITERATOR =
-          MethodHandles.publicLookup()
-              .findVirtual(Iterable.class, "iterator", MethodType.methodType(Iterator.class));
-    } catch (NoSuchMethodException | IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   /**
    * Iterator loop.
    *
@@ -877,7 +877,7 @@ public class Closure<R> extends Expr<R> {
 
     return iteratorLoop(
         tt,
-        iterable.asClosure().cast(Iterable.class).filterReturnValue(ITERABLE_ITERATOR),
+        iterable.asClosure().cast(Iterable.class).filterReturnValueMh(MhUtil.ITERABLE_ITERATOR),
         init,
         body);
   }

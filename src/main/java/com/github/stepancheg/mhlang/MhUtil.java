@@ -6,6 +6,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Objects;
 
 class MhUtil {
@@ -76,6 +77,18 @@ class MhUtil {
     try {
       IS_NOT_NULL = MethodHandles.lookup().findStatic(MhUtil.class, "isNotNull", MethodType.methodType(boolean.class, Object.class));
       NOT = MethodHandles.lookup().findStatic(MhUtil.class, "not", MethodType.methodType(boolean.class, boolean.class));
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  static final MethodHandle ITERABLE_ITERATOR;
+
+  static {
+    try {
+      ITERABLE_ITERATOR =
+        MethodHandles.publicLookup()
+          .findVirtual(Iterable.class, "iterator", MethodType.methodType(Iterator.class));
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new RuntimeException(e);
     }
