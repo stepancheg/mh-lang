@@ -66,6 +66,12 @@ for (Field field : tClass.getDeclaredFields()) {
 checkAllNotNull = b.buildReturnVoid();
 ```
 
+## Examples
+
+Examples live in
+[examples folder](https://github.com/stepancheg/mh-lang/tree/master/src/main/java/com/github/stepancheg/mhlang/examples),
+and the most demonstrative one is an implementation of struct of arrays.
+
 ## Struct of arrays
 
 Until Java gets proper value types, efficient memory usage is an issue.
@@ -81,6 +87,13 @@ As a demo for this library I have written to implementation of struct of arrays 
 MH version is
 [twenty times faster](https://github.com/stepancheg/mh-lang/blob/master/src/test/java/com/github/stepancheg/mhlang/examples/FlatArrayListBenchmark.java)
 than reflective version.
+
+## What about bytecode generation?
+
+Bytecode generation is equally hard for a regular user and a small project, but additionally, bytecode cannot easily
+(without using JVM hacks) perform restricted operatins like accessing private fields or invoking private methods.
+
+Method handles do not have this limitation.
 
 ## Maven and other feedback
 
