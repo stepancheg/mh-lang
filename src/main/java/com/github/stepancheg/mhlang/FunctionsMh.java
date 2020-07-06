@@ -3,6 +3,7 @@ package com.github.stepancheg.mhlang;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Comparator;
 import java.util.function.*;
 
 class FunctionsMh {
@@ -11,6 +12,7 @@ class FunctionsMh {
   private static final MethodHandle BI_CONSUMER;
   private static final MethodHandle PREDICATE;
   private static final MethodHandle BI_PREDICATE;
+  private static final MethodHandle COMPARATOR;
   private static final MethodHandle SUPPLIER;
   private static final MethodHandle RUNNABLE;
   private static final MethodHandle INT_UNARY_OPERATOR;
@@ -40,6 +42,10 @@ class FunctionsMh {
               BiPredicate.class,
               "test",
               MethodType.methodType(boolean.class, Object.class, Object.class));
+      COMPARATOR =
+        lookup.findVirtual(
+          Comparator.class,
+          "compare", MethodType.methodType(int.class, Object.class, Object.class));
       SUPPLIER = lookup.findVirtual(Supplier.class, "get", MethodType.methodType(Object.class));
       RUNNABLE = lookup.findVirtual(Runnable.class, "run", MethodType.methodType(void.class));
       INT_UNARY_OPERATOR =
@@ -72,8 +78,12 @@ class FunctionsMh {
     return MethodHandles.insertArguments(PREDICATE, 0, f);
   }
 
-  static MethodHandle biPredicateTest(BiPredicate<?, ?> f) {
+  static MethodHandle biPredicate(BiPredicate<?, ?> f) {
     return MethodHandles.insertArguments(BI_PREDICATE, 0, f);
+  }
+
+  static MethodHandle comparator(Comparator<?> f) {
+    return MethodHandles.insertArguments(COMPARATOR, 0, f);
   }
 
   static MethodHandle supplierGet(Supplier<?> supplier) {

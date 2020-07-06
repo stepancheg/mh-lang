@@ -12,10 +12,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.*;
 import java.util.stream.Stream;
 
@@ -398,10 +395,21 @@ public class Closure<R> extends Expr<R> {
   /** Make a closure from given function. */
   public static <A, B> Closure<Boolean> biPredicate(
       Expr<A> a, Expr<B> b, BiPredicate<A, B> predicate) {
-    MethodHandle mh = FunctionsMh.biPredicateTest(predicate);
+    MethodHandle mh = FunctionsMh.biPredicate(predicate);
     mh =
         MethodHandles.explicitCastArguments(
             mh, MethodType.methodType(boolean.class, a.type(), b.type()));
+    return Closure.fold(mh, a, b);
+  }
+
+  /** Make a closure from given function. */
+  public static <A> Closure<Boolean> comparator(Expr<A> a, Expr<A> b, Comparator<A> f) {
+    Preconditions.checkArgument(a.type() == b.type());
+
+    MethodHandle mh = FunctionsMh.comparator(f);
+    mh =
+        MethodHandles.explicitCastArguments(
+            mh, MethodType.methodType(int.class, a.type(), b.type()));
     return Closure.fold(mh, a, b);
   }
 
