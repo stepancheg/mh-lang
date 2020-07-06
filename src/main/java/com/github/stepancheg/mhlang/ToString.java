@@ -10,7 +10,7 @@ public class ToString {
 
   private static Closure<?> append(Expr<StringBuilder> sb, Expr<?> value) {
     if (value.type().isPrimitive()) {
-      if (value.type() == byte.class && value.type() == short.class) {
+      if (value.type() == byte.class || value.type() == short.class) {
         value = value.asClosure().cast(int.class);
       }
     } else {
