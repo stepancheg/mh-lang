@@ -427,7 +427,10 @@ public class Closure<R> extends Expr<R> {
     }
   }
 
-  /** {@code a + b} where {@code a} and {@code b} have the same type {@code int} or {@link long}. */
+  /**
+   * {@code a + b} where {@code a} and {@code b} have the same type {@code int}, {@link long} or
+   * {@link String}.
+   */
   public static <R> Closure<R> plus(Expr<R> a, Expr<R> b) {
     Preconditions.checkArgument(a.type() == b.type());
     return Closure.fold(MhUtil.plus(a.type()), a, b);
@@ -613,13 +616,44 @@ public class Closure<R> extends Expr<R> {
         new SigUnifier(init.args, predU.argsWithoutParam(), bodyU.argsWithoutParam());
 
     Closure<R> initFull = sigUnifier.unify(init);
-
     Closure<Boolean> predFull = sigUnifier.unifyWithoutFirst(predU.closure, 1);
     Closure<R> bodyFull = sigUnifier.unifyWithoutFirst(bodyU.closure, 1);
 
     MethodHandle mh = MethodHandles.whileLoop(initFull.mh, predFull.mh, bodyFull.mh);
 
     return new Closure<>(mh, sigUnifier.allVars);
+  }
+
+  /**
+   * White loop.
+   *
+   * <pre>
+   *     v = init(...)
+   *     do {
+   *         v = body(v, ...)
+   *     } while (pred(v, ...));
+   *     return v;
+   * </pre>
+   *
+   * Note {@link ClosureBuilder} can be used to build a closure.
+   */
+  public static <R> Closure<R> doWhileLoop(
+      Closure<R> init, Function<Var<R>, Closure<R>> body, Function<Var<R>, Closure<Boolean>> pred) {
+    Class<R> vt = init.type();
+
+    VarUpdate<R> bodyU = varUpdate(vt, body);
+    VarUpdate<Boolean> predU = varUpdate(vt, pred);
+
+    SigUnifier sigUnifier =
+        new SigUnifier(init.args, bodyU.argsWithoutParam(), predU.argsWithoutParam());
+
+    Closure<R> initFull = sigUnifier.unify(init);
+    Closure<R> bodyFull = sigUnifier.unifyWithoutFirst(bodyU.closure, 1);
+    Closure<Boolean> predFull = sigUnifier.unifyWithoutFirst(predU.closure, 1);
+
+    MethodHandle mh = MethodHandles.doWhileLoop(initFull.mh, bodyFull.mh, predFull.mh);
+
+    return new Closure<R>(mh, sigUnifier.allVars);
   }
 
   /**

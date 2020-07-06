@@ -128,6 +128,21 @@ public class ClosureTest {
   }
 
   @Test
+  public void doWhileLoop() throws Throwable {
+    MhBuilder b = new MhBuilder();
+    Var<Integer> p = b.addParam(int.class);
+    MethodHandle mh =
+        b.buildReturn(
+            Closure.doWhileLoop(
+                Closure.constant("!"),
+                v -> Closure.plus(v, Closure.constant(".")),
+                v -> Closure.biPredicate(v, p, (vv, pp) -> vv.length() < pp)));
+
+    assertEquals("!.", (String) mh.invokeExact(0));
+    assertEquals("!..", (String) mh.invokeExact(3));
+  }
+
+  @Test
   public void throwException() throws Throwable {
     RuntimeException exception = new RuntimeException();
 
@@ -279,5 +294,9 @@ public class ClosureTest {
   @Test
   public void plus() throws Throwable {
     assertEquals(5, (int) Closure.plus(Closure.constant(2), Closure.constant(3)).mh.invokeExact());
+    assertEquals(
+        5L, (long) Closure.plus(Closure.constant(2L), Closure.constant(3L)).mh.invokeExact());
+    assertEquals(
+        "23", (String) Closure.plus(Closure.constant("2"), Closure.constant("3")).mh.invokeExact());
   }
 }

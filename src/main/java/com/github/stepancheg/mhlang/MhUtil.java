@@ -29,6 +29,10 @@ class MhUtil {
     return a + b;
   }
 
+  private static String plus(String a, String b) {
+    return a + b;
+  }
+
   private static int mul(int a, int b) {
     return a * b;
   }
