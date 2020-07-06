@@ -97,7 +97,8 @@ Method handles do not have this limitation.
 
 This library is not published in Maven or elsewhere.
 Feel free to just copy sources to your project or to you private storage.
-If you think that it need to be published on Maven, open an issue in GitHub issue tracker.
+If you think that it need to be published on Maven,
+open an issue in GitHub issue tracker and I'll try to do something about it.
 
 Any other feedback? Open an issue in GitHub issue tracker.
 
