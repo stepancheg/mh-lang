@@ -81,7 +81,38 @@ public class Closure<R> extends Expr<R> {
       }
     }
 
-    return new Closure<>(collectedMh, vars.build().reverse());
+    return new Closure<R>(collectedMh, vars.build().reverse()).deduplicate();
+  }
+
+  /**
+   * Merge duplicate closure arguments.
+   *
+   * <p>Closure stays logically the same, but may work faster and hit the number of parameters
+   * limits later.
+   */
+  private Closure<R> deduplicate() {
+    LinkedHashMap<Var<?>, Integer> varToNewIndex = new LinkedHashMap<>();
+
+    int[] reorder = new int[args.size()];
+    for (int i = 0; i != reorder.length; ++i) {
+      reorder[i] = varToNewIndex.computeIfAbsent(args.get(i), v -> varToNewIndex.size());
+    }
+
+    if (varToNewIndex.size() == args.size()) {
+      // All arguments are already unique
+      return this;
+    } else {
+      ImmutableList<Var<?>> args =
+          varToNewIndex.keySet().stream().collect(ImmutableList.toImmutableList());
+
+      MethodHandle mh =
+          MethodHandles.permuteArguments(
+              this.mh,
+              MethodType.methodType(
+                  this.mh.type().returnType(), args.stream().map(Var::type).toArray(Class[]::new)),
+              reorder);
+      return new Closure<>(mh, args);
+    }
   }
 
   /** For a closure {@code c(...)} return a closure {@code !c(...)}. */
