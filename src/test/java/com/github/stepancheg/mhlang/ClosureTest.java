@@ -190,6 +190,30 @@ public class ClosureTest {
   }
 
   @Test
+  public void tryFinally() throws Throwable {
+    MethodHandle mh =
+        MhBuilder.shortcut(
+            boolean.class,
+            p -> {
+              return Closure.tryFinally(
+                  Closure.ifThenElse(
+                      p,
+                      Closure.throwException(
+                          String.class,
+                          Closure.supplier(Exception.class, () -> new RuntimeException("x"))),
+                      Closure.constant("no")),
+                  (t, v) -> Closure.plus(v, Closure.constant("!")));
+            });
+    assertEquals("no!", (String) mh.invokeExact(false));
+    try {
+      String x = (String) mh.invokeExact(true);
+      fail("returned: " + x);
+    } catch (RuntimeException e) {
+      assertEquals("x", e.getMessage());
+    }
+  }
+
+  @Test
   public void countedLoop() throws Throwable {
     MhBuilder b = new MhBuilder();
     Var<Long> begin = b.addParam(long.class);

@@ -488,6 +488,22 @@ public class Closure<R> extends Expr<R> {
     return new Closure<>(mh, sigUnifier.allVars);
   }
 
+  /** Wrap {@link MethodHandles#tryFinally(MethodHandle, MethodHandle)}. */
+  public static <R> Closure<R> tryFinally(
+      Closure<R> target, BiFunction<Var<Throwable>, Var<R>, Closure<R>> cleanup) {
+    Class<R> rt = target.type();
+
+    VarUpdate<R> cleanupU = varUpdate(Throwable.class, rt, cleanup);
+
+    SigUnifier sigUnifier = new SigUnifier(target.args, cleanupU.argsWithoutParam());
+
+    Closure<R> targetFull = sigUnifier.unify(target);
+    Closure<R> cleanupFull = sigUnifier.unifyWithoutFirst(cleanupU.closure, 2);
+
+    MethodHandle mh = MethodHandles.tryFinally(targetFull.mh, cleanupFull.mh);
+    return new Closure<>(mh, sigUnifier.allVars);
+  }
+
   /** {@code cond ? thenExpr() : elseExpr()}. */
   public static <R> Closure<R> ifThenElse(Expr<Boolean> cond, Expr<R> thenExpr, Expr<R> elseExpr) {
     Closure<R> thenCl = thenExpr.asClosure();
