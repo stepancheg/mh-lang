@@ -83,12 +83,16 @@ class MhUtil {
   }
 
   static final MethodHandle ITERABLE_ITERATOR;
+  static final MethodHandle COMPARABLE;
 
   static {
     try {
       ITERABLE_ITERATOR =
         MethodHandles.publicLookup()
           .findVirtual(Iterable.class, "iterator", MethodType.methodType(Iterator.class));
+      COMPARABLE =
+        MethodHandles.publicLookup()
+        .findVirtual(Comparable.class, "compareTo", MethodType.methodType(int.class, Object.class));
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new RuntimeException(e);
     }

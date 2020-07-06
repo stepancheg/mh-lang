@@ -515,6 +515,44 @@ public class Closure<R> extends Expr<R> {
     return Closure.fold(MhUtil.hashCode(a.type()), a);
   }
 
+  private static <A extends Comparable<A>> Closure<Integer> compareObjects(Expr<A> x, Expr<A> y) {
+    Preconditions.checkArgument(x.type() == y.type());
+    Class<A> at = x.type();
+    Preconditions.checkArgument(!at.isPrimitive());
+
+    MethodHandle mh =
+        MethodHandles.explicitCastArguments(
+            MhUtil.COMPARABLE, MethodType.methodType(int.class, x.type(), y.type()));
+
+    ClosureBuilder b = new ClosureBuilder();
+    Var<A> xv = b.assign(x.asClosure());
+    Var<A> yv = b.assign(y.asClosure());
+    return b.buildReturn(
+        Closure.ifThenElse(
+            Closure.same(xv, yv),
+            Closure.constant(0),
+            Closure.ifThenElse(
+                xv.asClosure().isNull(),
+                constant(-1),
+                Closure.ifThenElse(yv.asClosure().isNull(), constant(1), fold(mh, xv, yv)))));
+  }
+
+  /**
+   * Compare similar to {@link Comparator#naturalOrder()} and {@link
+   * Comparator#nullsFirst(Comparator)}.
+   */
+  public static <A extends Comparable<A>> Closure<Integer> compare(Expr<A> x, Expr<A> y) {
+    Preconditions.checkArgument(x.type() == y.type());
+    Class<A> at = x.type();
+    MethodHandle mh;
+    if (at.isPrimitive()) {
+      mh = PrimitiveType.forPrimitiveClass(at).compareMh;
+      return fold(mh, x, y);
+    } else {
+      return compareObjects(x, y);
+    }
+  }
+
   /** {@link Objects#toString(Object)}. */
   public static <A> Closure<String> toString(Expr<A> a) {
     if (a.type() == void.class) {

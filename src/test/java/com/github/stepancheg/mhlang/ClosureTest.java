@@ -388,4 +388,31 @@ public class ClosureTest {
     assertEquals(
         "23", (String) Closure.plus(Closure.constant("2"), Closure.constant("3")).mh.invokeExact());
   }
+
+  @Test
+  public void comparePrimitive() throws Throwable {
+    assertTrue(
+        (int) Closure.compare(Closure.constant(1L), Closure.constant(2L)).mh.invokeExact() < 0);
+  }
+
+  @Test
+  public void compareObjects() throws Throwable {
+    MethodHandle mhGt = Closure.compare(Closure.constant("cd"), Closure.constant("ab")).mh;
+    assertTrue((int) mhGt.invokeExact() > 0);
+    MethodHandle mhSame = Closure.compare(Closure.constant("ab"), Closure.constant("ab")).mh;
+    assertEquals(0, (int) mhSame.invokeExact());
+    MethodHandle mhEq =
+        Closure.compare(Closure.constant("ab"), Closure.constant(new String("ab"))).mh;
+    assertEquals(0, (int) mhEq.invokeExact());
+    MethodHandle mhGtNull =
+        Closure.compare(Closure.constant("cd"), Closure.constant(String.class, null)).mh;
+    assertTrue((int) mhGtNull.invokeExact() > 0);
+    MethodHandle mhLtNull =
+        Closure.compare(Closure.constant(String.class, null), Closure.constant("cd")).mh;
+    assertTrue((int) mhLtNull.invokeExact() < 0);
+    MethodHandle mhNull =
+        Closure.compare(Closure.constant(String.class, null), Closure.constant(String.class, null))
+            .mh;
+    assertEquals(0, (int) mhNull.invokeExact());
+  }
 }
