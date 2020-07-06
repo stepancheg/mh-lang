@@ -22,6 +22,7 @@ enum PrimitiveType {
   final Class<?> wrapperType;
 
   final MethodHandle hashCodeMh;
+  final MethodHandle toStringMh;
 
   PrimitiveType(Class<?> primitiveType, Class<?> wrapperType) {
     this.primitiveType = primitiveType;
@@ -29,6 +30,7 @@ enum PrimitiveType {
 
     try {
       this.hashCodeMh = MethodHandles.publicLookup().findStatic(wrapperType, "hashCode", MethodType.methodType(int.class, primitiveType));
+      this.toStringMh = MethodHandles.publicLookup().findStatic(wrapperType, "toString", MethodType.methodType(String.class, primitiveType));
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new RuntimeException(e);
     }

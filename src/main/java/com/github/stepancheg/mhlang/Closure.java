@@ -10,8 +10,10 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.*;
 import java.util.stream.Stream;
 
@@ -271,6 +273,8 @@ public class Closure<R> extends Expr<R> {
 
   /** Wrapper for {@link MethodHandles.Lookup#unreflectGetter(java.lang.reflect.Field)}. */
   public static <R> Closure<R> getField(Field field, Expr<?> object, MethodHandles.Lookup lookup) {
+    Preconditions.checkArgument(
+        (field.getModifiers() & Modifier.STATIC) == 0, "field should not be static: %s", field);
     try {
       MethodHandle mh = lookup.unreflectGetter(field);
       return Closure.fold(mh, object);
@@ -291,6 +295,8 @@ public class Closure<R> extends Expr<R> {
   /** Wrapper for {@link MethodHandles.Lookup#unreflectSetter(Field)}. */
   public static Closure<Void> setField(
       Field field, Expr<?> object, Expr<?> value, MethodHandles.Lookup lookup) {
+    Preconditions.checkArgument(
+        (field.getModifiers() & Modifier.STATIC) == 0, "field should not be static: %s", field);
     try {
       MethodHandle mh = lookup.unreflectSetter(field);
       return Closure.fold(mh, object, value);
@@ -398,8 +404,8 @@ public class Closure<R> extends Expr<R> {
   }
 
   /**
-   * Return a closure {@code a == b} for primitive types or {@link java.util.Objects#equals(Object,
-   * Object)} for object types.
+   * Return a closure {@code a == b} for primitive types or {@link Objects#equals(Object, Object)}
+   * for object types.
    */
   public static <A> Closure<Boolean> equals(Expr<A> a, Expr<A> b) {
     Preconditions.checkArgument(a.type() == b.type());
@@ -410,6 +416,15 @@ public class Closure<R> extends Expr<R> {
   public static <A> Closure<Integer> hashCode(Expr<A> a) {
     Preconditions.checkArgument(a.type() != void.class);
     return Closure.fold(MhUtil.hashCode(a.type()), a);
+  }
+
+  /** {@link Objects#toString(Object)}. */
+  public static <A> Closure<String> toString(Expr<A> a) {
+    if (a.type() == void.class) {
+      return constant("void");
+    } else {
+      return Closure.fold(MhUtil.toString(a.type()), a);
+    }
   }
 
   /** {@code a + b} where {@code a} and {@code b} have the same type {@code int} or {@link long}. */

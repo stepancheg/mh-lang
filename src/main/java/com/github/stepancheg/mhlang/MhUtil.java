@@ -159,10 +159,12 @@ class MhUtil {
   }
 
   private static final MethodHandle OBJECTS_HASH_CODE;
+  private static final MethodHandle OBJECTS_TO_STRING;
 
   static {
     try {
       OBJECTS_HASH_CODE = MethodHandles.publicLookup().findStatic(Objects.class, "hashCode", MethodType.methodType(int.class, Object.class));
+      OBJECTS_TO_STRING = MethodHandles.publicLookup().findStatic(Objects.class, "toString", MethodType.methodType(String.class, Object.class));
     } catch (NoSuchMethodException | IllegalAccessException e) {
       throw new RuntimeException(e);
     }
@@ -174,6 +176,15 @@ class MhUtil {
       return PrimitiveType.forPrimitiveClass(type).hashCodeMh;
     } else {
       return MethodHandles.explicitCastArguments(OBJECTS_HASH_CODE, MethodType.methodType(int.class, type));
+    }
+  }
+
+  static MethodHandle toString(Class<?> type) {
+    Preconditions.checkArgument(type != void.class);
+    if (type.isPrimitive()) {
+      return PrimitiveType.forPrimitiveClass(type).toStringMh;
+    } else {
+      return MethodHandles.explicitCastArguments(OBJECTS_TO_STRING, MethodType.methodType(String.class, type));
     }
   }
 }

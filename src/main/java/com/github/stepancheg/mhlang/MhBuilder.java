@@ -5,9 +5,11 @@ import com.google.common.collect.ImmutableList;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
+import java.util.Objects;
+import java.util.function.Function;
 
 /**
- * An utility to build {@link java.lang.invoke.MethodHandle}.
+ * An utility to build {@link MethodHandle}.
  *
  * <p>An entry point to this library.
  */
@@ -29,7 +31,7 @@ public class MhBuilder extends Builder {
   }
 
   /**
-   * Register a function ({@link java.lang.invoke.MethodHandle}) param.
+   * Register a function ({@link MethodHandle}) param.
    *
    * <p>Returned {@link Var} object can be referenced when constructing {@link Closure} objects.
    */
@@ -49,7 +51,7 @@ public class MhBuilder extends Builder {
   }
 
   /**
-   * Finalize construction by creating a {@link java.lang.invoke.MethodHandle} returning given
+   * Finalize construction by creating a {@link MethodHandle} returning given
    * expression.
    */
   public MethodHandle buildReturn(Expr<?> returnValue) {
@@ -58,10 +60,16 @@ public class MhBuilder extends Builder {
   }
 
   /**
-   * Finalize construction by creating a {@link java.lang.invoke.MethodHandle} returning {@code
+   * Finalize construction by creating a {@link MethodHandle} returning {@code
    * void}.
    */
   public MethodHandle buildReturnVoid() {
     return buildReturn(Closure.constantVoid());
+  }
+
+  public static <A, R> MethodHandle shortcut(Class<A> param, Function<Var<A>, Closure<R>> closure) {
+    MhBuilder b = new MhBuilder();
+    Var<A> p = b.addParam(param);
+    return b.buildReturn(Objects.requireNonNull(closure.apply(p)));
   }
 }
