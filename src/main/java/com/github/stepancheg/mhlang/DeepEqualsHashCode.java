@@ -56,12 +56,7 @@ public class DeepEqualsHashCode {
   public static <T> MethodHandle deepEquals(Class<T> clazz, MethodHandles.Lookup lookup) {
     Preconditions.checkArgument(!clazz.isPrimitive());
 
-    MhBuilder b = new MhBuilder();
-    Var<T> thiz = b.addParam(clazz);
-    Var<Object> that = b.addParam(Object.class);
-
-    Closure<Boolean> and = deepEquals(lookup, thiz, that);
-    return b.buildReturn(and);
+    return MhBuilder.p2(clazz, Object.class, (thiz, that) -> deepEquals(lookup, thiz, that));
   }
 
   /** Closure version of {@link #deepEquals(Class, MethodHandles.Lookup)}. */
@@ -111,7 +106,7 @@ public class DeepEqualsHashCode {
    * </pre>
    */
   public static <T> MethodHandle deepHashCode(Class<T> clazz, MethodHandles.Lookup lookup) {
-    return MhBuilder.shortcut(clazz, thiz -> deepHashCode(lookup, thiz));
+    return MhBuilder.p1(clazz, thiz -> deepHashCode(lookup, thiz));
   }
 
   /** Closure version of {@link #deepHashCode(Class, MethodHandles.Lookup)}. */

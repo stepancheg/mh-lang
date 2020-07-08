@@ -4,7 +4,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 
 public class DeepToString {
 
@@ -35,7 +34,7 @@ public class DeepToString {
 
   public static <T> MethodHandle buildToString(Class<T> clazz, MethodHandles.Lookup lookup) {
     if (clazz.isPrimitive()) {
-      return MhBuilder.shortcut(clazz, Closure::toString);
+      return MhBuilder.p1(clazz, Closure::toString);
     } else {
       MhBuilder b = new MhBuilder();
       Var<T> t = b.addParam(clazz);

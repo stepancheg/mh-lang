@@ -168,7 +168,7 @@ public class ClosureTest {
   @Test
   public void catchException() throws Throwable {
     MethodHandle mh =
-        MhBuilder.shortcut(
+        MhBuilder.p1(
             boolean.class,
             p -> {
               return Closure.catchException(
@@ -192,7 +192,7 @@ public class ClosureTest {
   @Test
   public void tryFinally() throws Throwable {
     MethodHandle mh =
-        MhBuilder.shortcut(
+        MhBuilder.p1(
             boolean.class,
             p -> {
               return Closure.tryFinally(
@@ -328,7 +328,7 @@ public class ClosureTest {
 
   @Test
   public void newArray() throws Throwable {
-    MethodHandle mh = MhBuilder.shortcut(int.class, p -> Closure.newArray(long[].class, p));
+    MethodHandle mh = MhBuilder.p1(int.class, p -> Closure.newArray(long[].class, p));
     long[] aa = (long[]) mh.invokeExact(2);
     assertArrayEquals(new long[2], aa);
   }

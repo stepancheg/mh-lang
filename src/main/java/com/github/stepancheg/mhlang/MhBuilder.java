@@ -6,7 +6,7 @@ import com.google.common.reflect.TypeToken;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
-import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -18,7 +18,13 @@ public class MhBuilder extends Builder {
 
   private ArrayList<Var.Param<?>> params = new ArrayList<>();
 
-  /** Create a fresh new builder for {@link MethodHandle}. */
+  /**
+   * Create a fresh new builder for {@link MethodHandle}.
+   *
+   * <p>This is needed mostly to create a stateful method handles (with single assignment multiple
+   * use variables). Stateless closure can be also constructed with shortcuts like {@link #p1(Class,
+   * Function)}.
+   */
   public MhBuilder() {}
 
   @Override
@@ -56,26 +62,72 @@ public class MhBuilder extends Builder {
     return super.assign(closure);
   }
 
-  /**
-   * Finalize construction by creating a {@link MethodHandle} returning given
-   * expression.
-   */
+  /** Finalize construction by creating a {@link MethodHandle} returning given expression. */
   public MethodHandle buildReturn(Expr<?> returnValue) {
     Var<?> val = assign(returnValue.asClosure());
     return buildReturnImpl(val).mh;
   }
 
-  /**
-   * Finalize construction by creating a {@link MethodHandle} returning {@code
-   * void}.
-   */
+  /** Finalize construction by creating a {@link MethodHandle} returning {@code void}. */
   public MethodHandle buildReturnVoid() {
     return buildReturn(Closure.constantVoid());
   }
 
-  public static <A, R> MethodHandle shortcut(Class<A> param, Function<Var<A>, Closure<R>> closure) {
+  /**
+   * Create a method handle from a parameterless closure.
+   *
+   * <p>If closure with state is needed, use {@link MhBuilder#MhBuilder()}.
+   */
+  public static <R> MethodHandle p0(Closure<R> closure) {
     MhBuilder b = new MhBuilder();
-    Var<A> p = b.addParam(param);
-    return b.buildReturn(Objects.requireNonNull(closure.apply(p)));
+    return b.buildReturn(closure);
+  }
+
+  /**
+   * Shortcut to create a single parameter method handle from a closure.
+   *
+   * <p>* If closure with state is needed, use {@link MhBuilder#MhBuilder()}.
+   */
+  public static <A, R> MethodHandle p1(Class<A> at, Function<Var<A>, Closure<R>> closure) {
+    MhBuilder b = new MhBuilder();
+    Var<A> ap = b.addParam(at);
+    return b.buildReturn(closure.apply(ap));
+  }
+
+  /**
+   * Shortcut to create a single parameter method handle from a closure.
+   *
+   * <p>* If closure with state is needed, use {@link MhBuilder#MhBuilder()}.
+   */
+  public static <A, R> MethodHandle p1(TypeToken<A> at, Function<Var<A>, Closure<R>> closure) {
+    MhBuilder b = new MhBuilder();
+    Var<A> ap = b.addParam(at);
+    return b.buildReturn(closure.apply(ap));
+  }
+
+  /**
+   * Shortcut to create a method handle from a two-parameter closure.
+   *
+   * <p>* If closure with state is needed, use {@link MhBuilder#MhBuilder()}.
+   */
+  public static <A, B, R> MethodHandle p2(
+      Class<A> at, Class<B> bt, BiFunction<Var<A>, Var<B>, Closure<R>> closure) {
+    MhBuilder b = new MhBuilder();
+    Var<A> ap = b.addParam(at);
+    Var<B> bp = b.addParam(bt);
+    return b.buildReturn(closure.apply(ap, bp));
+  }
+
+  /**
+   * Shortcut to create a method handle from a two-parameter closure.
+   *
+   * <p>* If closure with state is needed, use {@link MhBuilder#MhBuilder()}.
+   */
+  public static <A, B, R> MethodHandle p2(
+      TypeToken<A> at, TypeToken<B> bt, BiFunction<Var<A>, Var<B>, Closure<R>> closure) {
+    MhBuilder b = new MhBuilder();
+    Var<A> ap = b.addParam(at);
+    Var<B> bp = b.addParam(bt);
+    return b.buildReturn(closure.apply(ap, bp));
   }
 }
