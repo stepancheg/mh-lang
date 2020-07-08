@@ -1,5 +1,6 @@
 package com.github.stepancheg.mhlang.examples;
 
+import com.github.stepancheg.mhlang.DeepCompare;
 import com.github.stepancheg.mhlang.DeepEqualsHashCode;
 import com.github.stepancheg.mhlang.DeepToString;
 
@@ -14,9 +15,9 @@ import java.lang.invoke.MethodHandles;
  *
  * <p>This example uses these utilities.
  */
-public class EqualsHashCodeToStringExample {
+public class EqualsHashCodeToStringCompareToExample {
 
-  private static class MyData {
+  private static class MyData implements Comparable<MyData> {
     private final int i;
     private final String s;
     private final boolean b;
@@ -33,6 +34,8 @@ public class EqualsHashCodeToStringExample {
         DeepEqualsHashCode.deepHashCode(MyData.class, MethodHandles.lookup());
     private static final MethodHandle TO_STRING =
         DeepToString.buildToString(MyData.class, MethodHandles.lookup());
+    private static final MethodHandle COMPARE_TO =
+        DeepCompare.deepCompare(MyData.class, MethodHandles.lookup());
 
     @Override
     public int hashCode() {
@@ -60,6 +63,15 @@ public class EqualsHashCodeToStringExample {
         throw new RuntimeException(throwable);
       }
     }
+
+    @Override
+    public int compareTo(MyData o) {
+      try {
+        return (int) COMPARE_TO.invokeExact(this, o);
+      } catch (Throwable throwable) {
+        throw new RuntimeException(throwable);
+      }
+    }
   }
 
   public static void main(String[] args) {
@@ -68,5 +80,6 @@ public class EqualsHashCodeToStringExample {
     System.out.println(d.hashCode());
     System.out.println(d.equals(new MyData(1, "a", true)));
     System.out.println(d.equals(new MyData(1, "a", false)));
+    System.out.println(d.compareTo(new MyData(1, "b", false)));
   }
 }

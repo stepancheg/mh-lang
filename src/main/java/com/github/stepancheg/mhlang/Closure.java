@@ -548,6 +548,7 @@ public class Closure<R> extends Expr<R> {
       mh = PrimitiveType.forPrimitiveClass(at).compareMh;
       return fold(mh, x, y);
     } else {
+      Preconditions.checkArgument(Comparable.class.isAssignableFrom(at));
       return compareObjects(x, y);
     }
   }
